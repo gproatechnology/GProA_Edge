@@ -18,8 +18,10 @@ app.include_router(api_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
+    import asyncio
     from app.db.seed import seed_demo_data
-    await seed_demo_data()
+    # Run seeding in background so it doesn't block Render health checks
+    asyncio.create_task(seed_demo_data())
 
 origins = os.environ.get('CORS_ORIGINS', '*').split(',')
 allow_credentials = True
