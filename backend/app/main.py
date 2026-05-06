@@ -16,6 +16,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 # Include API Router
 app.include_router(api_router, prefix="/api")
 
+@app.on_event("startup")
+async def startup_event():
+    from app.db.seed import seed_demo_data
+    await seed_demo_data()
+
 origins = os.environ.get('CORS_ORIGINS', '*').split(',')
 allow_credentials = True
 if '*' in origins:
