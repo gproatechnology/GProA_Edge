@@ -63,7 +63,7 @@ El archivo `render.yaml` ya está configurado para despliegue automático. Solo 
    ```
 6. Start Command:
    ```bash
-   cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
+   cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
 7. **Environment Variables:**
    ```
