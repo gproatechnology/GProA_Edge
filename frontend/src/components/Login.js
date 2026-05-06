@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { Zap, Lock, Mail, ArrowRight } from "lucide-react";
+import { Lock, Mail, ArrowRight } from "lucide-react";
+import logoEosis from "../assets/branding/logo_eosis.png";
+import logoEdge from "../assets/branding/logo_edge.png";
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -31,13 +33,15 @@ export default function Login({ onLogin }) {
         
         {/* Header */}
         <div className="flex flex-col items-center mb-10">
-          <div className="h-14 w-14 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-5">
-            <Zap size={28} className="text-white" fill="currentColor" />
+          <div className="flex gap-4 items-center mb-6">
+            <img src={logoEosis} alt="EOSIS" className="h-10 object-contain" />
+            <div className="h-8 w-[1px] bg-white/20"></div>
+            <img src={logoEdge} alt="EDGE" className="h-8 object-contain" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-            GProA Edge
+          <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            Assistant Pro
           </h2>
-          <p className="text-slate-400 text-sm">Ingresa a la plataforma de certificación</p>
+          <p className="text-slate-400 text-sm">GProA EDGE Certification System</p>
         </div>
 
         {/* Form */}

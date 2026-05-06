@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Folders, House, Lightning, SignOut, Moon, Sun } from "@phosphor-icons/react";
+import logoEosis from "../assets/branding/logo_eosis.png";
+import logoEdge from "../assets/branding/logo_edge.png";
 
 export default function Sidebar({ projects, onNavigate, stats }) {
   const location = useLocation();
@@ -41,17 +42,13 @@ export default function Sidebar({ projects, onNavigate, stats }) {
       data-testid="sidebar"
     >
       {/* Logo & Theme Toggle */}
-      <div className="h-16 flex items-center justify-between px-5 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-sm">
-            <Lightning weight="fill" className="text-primary-foreground w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-sm font-bold tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              EDGE
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground block leading-tight">
-              Doc Processor
+      <div className="h-20 flex items-center justify-between px-5 border-b border-border bg-muted/20">
+        <div className="flex flex-col gap-1">
+          <img src={logoEosis} alt="EOSIS" className="h-6 object-contain" />
+          <div className="flex items-center gap-1.5 mt-1">
+            <img src={logoEdge} alt="EDGE" className="h-4 object-contain opacity-80" />
+            <span className="text-[8px] uppercase tracking-widest font-bold text-muted-foreground">
+              Assistant
             </span>
           </div>
         </div>
