@@ -12,11 +12,15 @@ export default function Login({ onLogin }) {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate network request for mock login
+    // Identificar perfil basado en el email
+    const user = email.toLowerCase().includes("jorge") 
+      ? { name: "Jorge", role: "manager", avatar: "J" }
+      : { name: "Luis", role: "consultant", avatar: "L" };
+
     setTimeout(() => {
       setIsLoading(false);
-      onLogin(); // Bypass real auth for now
-    }, 1500);
+      onLogin(user); 
+    }, 1200);
   };
 
   return (

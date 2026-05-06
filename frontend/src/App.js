@@ -23,7 +23,7 @@ if (process.env.REACT_APP_BACKEND_URL) {
 
 export { API };
 
-function AppLayout() {
+function AppLayout({ user }) {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300" data-testid="app-layout">
-      <Sidebar projects={projects} onNavigate={navigate} stats={stats} />
+      <Sidebar projects={projects} onNavigate={navigate} stats={stats} user={user} />
       <main className="flex-1 ml-[260px]">
         <Routes>
           <Route
@@ -69,12 +69,13 @@ function AppLayout() {
                 stats={stats}
                 onProjectCreated={fetchProjects}
                 onNavigate={navigate}
+                user={user}
               />
             }
           />
           <Route
             path="/projects/:projectId"
-            element={<ProjectDetailWrapper onProjectDeleted={fetchProjects} />}
+            element={<ProjectDetailWrapper onProjectDeleted={fetchProjects} user={user} />}
           />
         </Routes>
       </main>
@@ -82,12 +83,13 @@ function AppLayout() {
   );
 }
 
-function ProjectDetailWrapper({ onProjectDeleted }) {
+function ProjectDetailWrapper({ onProjectDeleted, user }) {
   const { projectId } = useParams();
   const navigate = useNavigate();
   return (
     <ProjectDetail
       projectId={projectId}
+      user={user}
       onProjectDeleted={() => {
         onProjectDeleted();
         navigate("/");
@@ -100,33 +102,40 @@ import { Toaster } from "sonner";
 
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
   // Check local storage for existing session
   useEffect(() => {
-    const session = localStorage.getItem("gproa_session");
-    if (session) {
-      setIsAuthenticated(true);
+    const savedUser = localStorage.getItem("gproa_user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
     }
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = (userData) => {
     localStorage.setItem("gproa_session", "true");
-    setIsAuthenticated(true);
+    localStorage.setItem("gproa_user", JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("gproa_session");
+    localStorage.removeItem("gproa_user");
+    setUser(null);
   };
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <>
       <Toaster position="top-right" richColors closeButton />
-      <AppLayout />
+      <AppLayout user={user} />
     </>
   );
 }

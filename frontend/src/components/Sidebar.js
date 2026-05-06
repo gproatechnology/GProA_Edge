@@ -33,6 +33,7 @@ export default function Sidebar({ projects, onNavigate, stats }) {
 
   const handleLogout = () => {
     localStorage.removeItem("gproa_session");
+    localStorage.removeItem("gproa_user");
     window.location.href = "/";
   };
 
@@ -78,36 +79,32 @@ export default function Sidebar({ projects, onNavigate, stats }) {
           </button>
         </div>
 
-        {/* Portfolio Summary */}
-        <div className="mb-6 px-3">
-          <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground mb-2">
-            Resumen Portafolio
-          </p>
-          <div className="bg-muted/30 rounded-2xl p-3 border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-muted-foreground font-medium">Críticos</span>
-              <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded">
-                {stats?.critical || 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-muted-foreground font-medium">Alta Prioridad</span>
-              <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-1.5 rounded">
-                {stats?.high || 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground font-medium">Eficiencia Promedio</span>
-              <span className="text-[10px] font-bold text-emerald-500">
-                {stats?.efficiency || 0} <span className="text-[8px] opacity-60">kWh/m²</span>
-              </span>
+        {/* Portfolio Summary - Only for Managers */}
+        {user?.role === "manager" && (
+          <div className="mb-6 px-3">
+            <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground mb-2">
+              KPIs Gerencia
+            </p>
+            <div className="bg-primary/5 rounded-2xl p-3 border border-primary/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-muted-foreground font-medium">Proyectos Críticos</span>
+                <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded">
+                  {stats?.critical || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-medium">Eficiencia Media</span>
+                <span className="text-[10px] font-bold text-emerald-500">
+                  {stats?.efficiency || 0}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div>
           <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground px-3 mb-2">
-            Proyectos
+            {user?.role === "consultant" ? "Mis Proyectos EDGE" : "Proyectos"}
           </p>
           <div className="space-y-0.5">
             {Array.isArray(projects) && projects.map((p) => (
@@ -126,26 +123,31 @@ export default function Sidebar({ projects, onNavigate, stats }) {
                 <span className="truncate">{p.name}</span>
               </button>
             ))}
-            {projects.length === 0 && (
-              <p className="text-xs text-muted-foreground px-4 py-2 italic">Sin proyectos</p>
-            )}
           </div>
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-border flex items-center justify-between">
-        <p className="text-[10px] text-muted-foreground font-medium">
+      {/* Footer / User Profile */}
+      <div className="px-3 py-4 border-t border-border bg-muted/10">
+        <div className="flex items-center gap-3 px-2 mb-4">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20">
+            {user?.avatar || "U"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold truncate">{user?.name || "Usuario"}</p>
+            <p className="text-[10px] text-muted-foreground capitalize">{user?.role || "Invitado"}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10"
+            title="Cerrar Sesión"
+          >
+            <SignOut className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-[9px] text-muted-foreground font-medium px-2 text-center">
           EDGE Certification Tool v1.0
         </p>
-        <button
-          onClick={handleLogout}
-          className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10"
-          title="Cerrar Sesión"
-          data-testid="logout-button"
-        >
-          <SignOut className="w-4 h-4" />
-        </button>
       </div>
     </aside>
   );
