@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import projects, files, processing, rules, analysis, exports, debug
+from app.api.endpoints import projects, files, processing, rules, analysis, exports, debug, assistant
 
 api_router = APIRouter()
 
@@ -9,4 +9,5 @@ api_router.include_router(processing.router, tags=["processing"])
 api_router.include_router(rules.router, tags=["rules"])
 api_router.include_router(analysis.router, tags=["analysis"])
 api_router.include_router(exports.router, tags=["exports"])
+api_router.include_router(assistant.router, tags=["assistant"])
 api_router.include_router(debug.router, prefix="/debug", tags=["debug"])

@@ -10,6 +10,7 @@ import EdgeStatusTab from "@/components/EdgeStatusTab";
 import EdgeComplianceTab from "@/components/EdgeComplianceTab";
 import BatchProgressModal from "@/components/BatchProgressModal";
 import DataPreviewModal from "@/components/DataPreviewModal";
+import ChatAssistant from "@/components/ChatAssistant";
 import { generateProjectPDF } from "@/utils/generateProjectPDF";
 
 const TABS = [
@@ -268,6 +269,8 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
         onClose={() => setPreviewFile(null)}
         file={previewFile}
       />
+
+      <ChatAssistant projectId={projectId} />
     </div>
   );
 }
