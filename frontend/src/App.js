@@ -32,9 +32,10 @@ function AppLayout() {
     try {
       setLoading(true);
       const res = await axios.get(`${API}/projects`);
-      setProjects(res.data);
+      setProjects(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error("Error fetching projects:", e);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -44,11 +45,13 @@ function AppLayout() {
     fetchProjects();
   }, [fetchProjects]);
 
+  const projectsArray = Array.isArray(projects) ? projects : [];
+
   const stats = {
-    critical: projects.filter(p => p.priority === "Crítica").length,
-    high: projects.filter(p => p.priority === "Alta").length,
-    efficiency: projects.length > 0 
-      ? (projects.reduce((sum, p) => sum + (p.efficiency || 0), 0) / projects.length).toFixed(1)
+    critical: projectsArray.filter(p => p.priority === "Crítica").length,
+    high: projectsArray.filter(p => p.priority === "Alta").length,
+    efficiency: projectsArray.length > 0 
+      ? (projectsArray.reduce((sum, p) => sum + (p.efficiency || 0), 0) / projectsArray.length).toFixed(1)
       : 0
   };
 

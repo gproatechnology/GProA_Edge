@@ -113,7 +113,7 @@ export default function Sidebar({ projects, onNavigate, stats }) {
             Proyectos
           </p>
           <div className="space-y-0.5">
-            {projects.map((p) => (
+            {Array.isArray(projects) && projects.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onNavigate(`/projects/${p.id}`)}
