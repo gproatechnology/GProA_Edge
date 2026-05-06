@@ -31,7 +31,7 @@ function AppLayout() {
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API}/projects`);
+      const res = await axios.get(`${API}/projects/`);
       setProjects(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error("Error fetching projects:", e);

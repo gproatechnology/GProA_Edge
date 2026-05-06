@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ export default function ProjectDashboard({ projects, loading, stats, onProjectCr
     if (!name.trim() || !typology) return;
     setCreating(true);
     try {
-      await axios.post(`${API}/projects`, { name: name.trim(), typology });
+      await axios.post(`${API}/projects/`, { name: name.trim(), typology });
       setName("");
       setTypology("");
       setShowDialog(false);
@@ -316,6 +317,7 @@ export default function ProjectDashboard({ projects, loading, stats, onProjectCr
         <DialogContent className="sm:max-w-[420px]" data-testid="create-project-dialog">
           <DialogHeader>
             <DialogTitle style={{ fontFamily: "'Outfit', sans-serif" }} className="text-lg font-bold text-slate-900">Nuevo Proyecto</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">Completa los datos básicos para iniciar la clasificación.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
