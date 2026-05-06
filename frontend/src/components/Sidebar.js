@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Folders, House, Lightning, SignOut, Moon, Sun } from "@phosphor-icons/react";
 
-export default function Sidebar({ projects, onNavigate }) {
+export default function Sidebar({ projects, onNavigate, stats }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
   
-  const [isDark, setIsDark] = useState(document.documentElement.classList.contains("dark"));
+  const [isDark, setIsDark] = useState(() => {
+    return document.documentElement.classList.contains("dark");
+  });
 
   const toggleDarkMode = () => {
     const newDark = !isDark;
@@ -88,19 +90,19 @@ export default function Sidebar({ projects, onNavigate }) {
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] text-muted-foreground font-medium">Críticos</span>
               <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded">
-                {projects.filter(p => p.priority && p.priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes('crit')).length}
+                {stats?.critical || 0}
               </span>
             </div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] text-muted-foreground font-medium">Alta Prioridad</span>
               <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-1.5 rounded">
-                {projects.filter(p => p.priority && p.priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes('alt')).length}
+                {stats?.high || 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground font-medium">Eficiencia Promedio</span>
-              <span className="text-[10px] font-bold text-primary">
-                {projects.length > 0 ? (projects.reduce((acc, p) => acc + (p.square_meters > 0 ? (p.annual_consumption_kwh || 0) / p.square_meters : 0), 0) / projects.filter(p => p.square_meters > 0).length || 0).toFixed(0) : 0} <span className="text-[8px]">kWh/m²</span>
+              <span className="text-[10px] font-bold text-emerald-500">
+                {stats?.efficiency || 0} <span className="text-[8px] opacity-60">kWh/m²</span>
               </span>
             </div>
           </div>

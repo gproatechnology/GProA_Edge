@@ -39,78 +39,95 @@ export default function BatchProgressModal({ isOpen, onClose, jobId, projectId, 
   const isError = status?.status === "error";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" data-testid="batch-progress-modal">
-      <div className="bg-white rounded-sm border border-slate-200 shadow-xl w-[520px] max-w-[90vw] animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md" data-testid="batch-progress-modal">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-[560px] max-w-[95vw] animate-fadeIn overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-slate-900 rounded-sm flex items-center justify-center">
-              <Lightning weight="fill" className="text-white w-4 h-4" />
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-glow">
+              <Lightning weight="fill" className="text-primary-foreground w-5 h-5" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900" style={{ fontFamily: "'Outfit', sans-serif" }}>
-              {isCompleted ? "Procesamiento Completado" : isError ? "Error en Procesamiento" : "Procesando Proyecto EDGE"}
-            </h3>
+            <div>
+              <h3 className="text-base font-bold text-foreground leading-none">
+                {isCompleted ? "Procesamiento Completado" : isError ? "Error en Procesamiento" : "Procesando Proyecto EDGE"}
+              </h3>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1.5 font-bold">Diagnóstico en Tiempo Real</p>
+            </div>
           </div>
           {(isCompleted || isError) && (
-            <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" data-testid="close-progress-modal">
-              <X className="w-4 h-4" />
+            <button 
+              onClick={onClose} 
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all" 
+              data-testid="close-progress-modal"
+            >
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-8 py-6 space-y-6">
           {/* Progress bar */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase tracking-[0.1em] font-semibold text-slate-400">Progreso</span>
-              <span className="font-mono text-sm font-medium text-slate-900" data-testid="progress-percent">{percent}%</span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Progreso de Extracción</span>
+              <span className="font-mono text-lg font-bold text-primary" data-testid="progress-percent">{percent}%</span>
             </div>
-            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-full h-4 bg-muted rounded-full overflow-hidden border border-border">
               <div
-                className={`h-full rounded-full transition-all duration-700 ease-out ${isCompleted ? "bg-emerald-500" : isError ? "bg-red-500" : "bg-slate-900"}`}
+                className={`h-full rounded-full transition-all duration-700 ease-out shadow-glow ${isCompleted ? "bg-emerald-500" : isError ? "bg-destructive" : "bg-primary"}`}
                 style={{ width: `${percent}%` }}
                 data-testid="batch-progress-bar"
               />
             </div>
           </div>
 
-          {/* Current status */}
-          <div className="bg-slate-50 border border-slate-200 rounded-sm p-4">
-            <div className="flex items-center gap-3">
-              {isCompleted ? (
-                <CheckCircle weight="fill" className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              ) : isError ? (
-                <WarningCircle weight="fill" className="w-5 h-5 text-red-500 flex-shrink-0" />
-              ) : (
-                <SpinnerGap className="w-5 h-5 text-slate-500 animate-spin flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate" data-testid="current-step">
-                  {status?.current_step || "Iniciando..."}
+          {/* Current status info */}
+          <div className="bg-muted/50 border border-border rounded-2xl p-5 relative overflow-hidden">
+             {!isCompleted && !isError && (
+               <div className="absolute top-0 left-0 h-1 bg-primary/20 w-full overflow-hidden">
+                 <div className="h-full bg-primary animate-pulse w-full" />
+               </div>
+             )}
+            <div className="flex items-start gap-4">
+              <div className="mt-1">
+                {isCompleted ? (
+                  <CheckCircle weight="fill" className="w-6 h-6 text-emerald-500" />
+                ) : isError ? (
+                  <WarningCircle weight="fill" className="w-6 h-6 text-destructive" />
+                ) : (
+                  <SpinnerGap className="w-6 h-6 text-primary animate-spin" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-foreground truncate" data-testid="current-step">
+                  {status?.current_step || "Iniciando análisis de documentos..."}
                 </p>
                 {status?.current_file && (
-                  <p className="text-xs text-slate-400 truncate mt-0.5" data-testid="current-file">
-                    {status.current_file}
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <p className="text-xs text-muted-foreground truncate italic" data-testid="current-file">
+                      {status.current_file}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-3 bg-slate-50 rounded-sm border border-slate-100">
-              <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-slate-400 mb-0.5">Total</p>
-              <p className="font-mono text-lg font-semibold text-slate-900">{status?.total || 0}</p>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="stat-card p-4 flex flex-col items-center">
+              <p className="text-[9px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Total</p>
+              <p className="font-mono text-xl font-bold">{status?.total || 0}</p>
             </div>
-            <div className="text-center p-3 bg-slate-50 rounded-sm border border-slate-100">
-              <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-slate-400 mb-0.5">Procesados</p>
-              <p className="font-mono text-lg font-semibold text-emerald-600">{status?.processed || 0}</p>
+            <div className="stat-card p-4 flex flex-col items-center border-emerald-500/10">
+              <p className="text-[9px] uppercase tracking-widest font-bold text-emerald-500/70 mb-1">Éxito</p>
+              <p className="font-mono text-xl font-bold text-emerald-500">{status?.processed || 0}</p>
             </div>
-            <div className="text-center p-3 bg-slate-50 rounded-sm border border-slate-100">
-              <p className="text-[10px] uppercase tracking-[0.1em] font-semibold text-slate-400 mb-0.5">Restantes</p>
-              <p className="font-mono text-lg font-semibold text-amber-600">
+            <div className="stat-card p-4 flex flex-col items-center border-destructive/10">
+              <p className="text-[9px] uppercase tracking-widest font-bold text-destructive/70 mb-1">Pendiente</p>
+              <p className="font-mono text-xl font-bold text-destructive">
                 {(status?.total || 0) - (status?.processed || 0)}
               </p>
             </div>
@@ -118,16 +135,21 @@ export default function BatchProgressModal({ isOpen, onClose, jobId, projectId, 
 
           {/* Results list (completed) */}
           {isCompleted && status?.results?.length > 0 && (
-            <div className="max-h-32 overflow-y-auto space-y-1">
+            <div className="max-h-40 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1 mb-2">Resumen de Archivos</p>
               {status.results.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs py-1 px-2 rounded-sm bg-slate-50">
+                <div key={i} className="flex items-center gap-3 py-2.5 px-4 rounded-xl bg-muted/40 border border-border group hover:bg-muted/60 transition-colors">
                   {r.status === "processed" ? (
-                    <CheckCircle weight="fill" className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   ) : (
-                    <WarningCircle weight="fill" className="w-3 h-3 text-red-500 flex-shrink-0" />
+                    <WarningCircle weight="fill" className="w-4 h-4 text-destructive flex-shrink-0" />
                   )}
-                  <span className="truncate text-slate-600">{r.filename}</span>
-                  {r.measure && <span className="font-mono text-[10px] text-slate-400 flex-shrink-0">{r.measure}</span>}
+                  <span className="truncate text-xs font-medium flex-1">{r.filename}</span>
+                  {r.measure && (
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md font-mono text-[9px] font-bold">
+                      {r.measure}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -135,15 +157,19 @@ export default function BatchProgressModal({ isOpen, onClose, jobId, projectId, 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end">
-          {(isCompleted || isError) && (
+        <div className="px-8 py-5 border-t border-border flex justify-end bg-muted/20">
+          {(isCompleted || isError) ? (
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm bg-slate-900 text-white rounded-sm hover:bg-slate-800 transition-colors"
+              className="px-6 py-2.5 text-sm bg-primary text-primary-foreground font-bold rounded-xl hover:shadow-glow transition-all active:scale-95"
               data-testid="close-progress-button"
             >
-              {isCompleted ? "Ver Resultados" : "Cerrar"}
+              {isCompleted ? "Ver Resultados" : "Cerrar Panel"}
             </button>
+          ) : (
+             <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground animate-pulse-slow">
+               No cierres esta ventana mientras se procesa...
+             </p>
           )}
         </div>
       </div>

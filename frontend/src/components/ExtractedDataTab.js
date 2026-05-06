@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { API } from "@/App";
 import { DownloadSimple, Table as TableIcon, Lightning, PencilSimple, Check, X } from "@phosphor-icons/react";
+import { toast } from "sonner";
 
 export default function ExtractedDataTab({ projectId, files, onRefresh }) {
   const [exporting, setExporting] = useState(false);
@@ -13,6 +14,7 @@ export default function ExtractedDataTab({ projectId, files, onRefresh }) {
 
   const handleExport = async () => {
     setExporting(true);
+    toast.info("Generando archivo Excel...");
     try {
       const res = await axios.get(`${API}/projects/${projectId}/export-excel`, {
         responseType: "blob",
@@ -25,8 +27,10 @@ export default function ExtractedDataTab({ projectId, files, onRefresh }) {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success("Excel exportado con éxito");
     } catch (e) {
       console.error("Error exporting:", e);
+      toast.error("Error al exportar el archivo");
     } finally {
       setExporting(false);
     }
@@ -52,10 +56,11 @@ export default function ExtractedDataTab({ projectId, files, onRefresh }) {
     try {
       await axios.put(`${API}/files/${fileId}`, editForm);
       setEditingId(null);
+      toast.success("Cambios guardados correctamente");
       if (onRefresh) onRefresh(); // Para recargar los datos
     } catch (e) {
       console.error("Error saving edit:", e);
-      alert("Error al guardar los cambios");
+      toast.error("Error al guardar los cambios");
     } finally {
       setSaving(false);
     }

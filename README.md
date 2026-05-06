@@ -26,6 +26,7 @@
 - 📊 **Executive Dashboard**: Real-time monitoring of project status, documentation gaps, and EDGE metrics.
 - 🎨 **Premium UI**: Modern, responsive interface built with React 19, Tailwind, and Shadcn UI.
 - 📤 **Enterprise Export**: Advanced Excel generation with detailed data sheets.
+- ⚡ **AI Toolset**: Integrated "Prompts" for classification (ConsultorÍA) and area calculation (Areas & Loads).
 
 ---
 
@@ -143,6 +144,7 @@ For real AI processing and cloud database:
 | `OPENAI_API_KEY` | OpenAI API key (GPT-4o) | ✅ Yes |
 | `DEMO_MODE` | Set to `false` | No |
 | `CORS_ORIGINS` | Allowed origins (e.g., `https://yourdomain.com`) | ✅ Yes |
+| `GOOGLE_DRIVE_CREDENTIALS` | Service Account JSON (Placeholder for future sync) | ⏳ Optional |
 
 Setup guide: **[ENV_SETUP.md](docs/ENV_SETUP.md)**.
 
@@ -152,7 +154,7 @@ Setup guide: **[ENV_SETUP.md](docs/ENV_SETUP.md)**.
 ### 🚀 Phase 2 (P1: Professionalization)
 - **Visual Traceability**: Highlight extracted data directly on PDF source pages for instant verification.
 - **Enhanced OCR**: Advanced pre-processing for low-quality PDF scans and handwritten notes.
-- **Google Drive / Sharepoint**: Automatic synchronization of project folders.
+- **Google Drive / Sharepoint**: Direct synchronization to eliminate manual upload limits. [IN PROGRESS]
 - **Progress Tracking**: Real-time progress bars for batch document processing.
 
 ### 🏢 Phase 3 (P2: Enterprise & Security)

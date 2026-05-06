@@ -44,9 +44,17 @@ function AppLayout() {
     fetchProjects();
   }, [fetchProjects]);
 
+  const stats = {
+    critical: projects.filter(p => p.priority === "Crítica").length,
+    high: projects.filter(p => p.priority === "Alta").length,
+    efficiency: projects.length > 0 
+      ? (projects.reduce((sum, p) => sum + (p.efficiency || 0), 0) / projects.length).toFixed(1)
+      : 0
+  };
+
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300" data-testid="app-layout">
-      <Sidebar projects={projects} onNavigate={navigate} />
+      <Sidebar projects={projects} onNavigate={navigate} stats={stats} />
       <main className="flex-1 ml-[260px]">
         <Routes>
           <Route
@@ -55,6 +63,7 @@ function AppLayout() {
               <ProjectDashboard
                 projects={projects}
                 loading={loading}
+                stats={stats}
                 onProjectCreated={fetchProjects}
                 onNavigate={navigate}
               />
@@ -84,6 +93,8 @@ function ProjectDetailWrapper({ onProjectDeleted }) {
   );
 }
 
+import { Toaster } from "sonner";
+
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -109,12 +120,17 @@ function MainApp() {
     return <Login onLogin={handleLogin} />;
   }
 
-  return <AppLayout />;
+  return (
+    <>
+      <Toaster position="top-right" richColors closeButton />
+      <AppLayout />
+    </>
+  );
 }
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <MainApp />
     </BrowserRouter>
   );

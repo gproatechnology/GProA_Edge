@@ -72,10 +72,11 @@ export default function ProjectAnalytics({ projects }) {
       <div 
         ref={containerRef}
         className="relative w-full overflow-hidden"
+        style={{ minHeight: '280px' }}
       >
         {isReady ? (
-          <div className="w-full">
-            <ResponsiveContainer width="100%" aspect={3}>
+          <div className="w-full h-full" style={{ minWidth: 0, minHeight: '280px' }}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10" />
                 <XAxis 

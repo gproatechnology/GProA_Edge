@@ -66,30 +66,61 @@ export default function EdgeStatusTab({ projectId }) {
 
   return (
     <div data-testid="edge-status-tab" className="space-y-6">
-      {/* Progress */}
-      <div className="stat-card">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-            Progreso General de Procesamiento
-          </p>
-          <span className="font-mono text-2xl font-bold text-primary">{progressPercent}%</span>
-        </div>
-        <div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-4">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(var(--primary),0.3)]"
-            style={{ width: `${progressPercent}%` }}
-            data-testid="progress-bar"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-bold text-foreground">{status.processed_files}</span> de{" "}
-            <span className="font-bold text-foreground">{status.total_files}</span> archivos completados
-          </p>
-          <div className="flex items-center gap-1.5">
-             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-             <span className="text-[10px] font-bold uppercase tracking-tighter opacity-60">En tiempo real</span>
+      {/* Progress & Savings */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Progress */}
+        <div className="stat-card lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+              Progreso General de Procesamiento
+            </p>
+            <span className="font-mono text-2xl font-bold text-primary">{progressPercent}%</span>
           </div>
+          <div className="w-full h-3 bg-muted rounded-full overflow-hidden mb-4 border border-border">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-1000 shadow-glow"
+              style={{ width: `${progressPercent}%` }}
+              data-testid="progress-bar"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-bold text-foreground">{status.processed_files}</span> de{" "}
+              <span className="font-bold text-foreground">{status.total_files}</span> archivos completados
+            </p>
+            <div className="flex items-center gap-1.5">
+               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+               <span className="text-[10px] font-bold uppercase tracking-tighter opacity-60">En tiempo real</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Savings Indicators */}
+        <div className="stat-card">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-4">
+            Ahorro Estimado EDGE
+          </p>
+          <div className="space-y-4">
+            {[
+              { id: 'energy', label: 'Energia', val: status.savings?.energy || 0, color: 'text-sky-500', bg: 'bg-sky-500/20' },
+              { id: 'water', label: 'Agua', val: status.savings?.water || 0, color: 'text-blue-500', bg: 'bg-blue-500/20' },
+              { id: 'materials', label: 'Materiales', val: status.savings?.materials || 0, color: 'text-amber-500', bg: 'bg-amber-500/20' },
+            ].map(s => (
+              <div key={s.id} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{s.label}</span>
+                  <span className={`text-xs font-bold ${s.color}`}>{s.val}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${s.bg.replace('/20', '')} transition-all duration-1000`} 
+                    style={{ width: `${s.val}%` }} 
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] text-muted-foreground mt-4 italic text-center">Datos proyectados según WBS actual</p>
         </div>
       </div>
 

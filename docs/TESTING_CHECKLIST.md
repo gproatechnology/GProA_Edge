@@ -82,6 +82,11 @@ Go to "Compliance EDGE" tab:
   - [ ] Sheet 2: "Validacion WBS" with measures and gaps
   - [ ] Sheet 3: "EEM22 Luminarias" (if LED data uploaded)
   - [ ] Sheet 4: "Areas" (if plano files uploaded)
+- [ ] **ZIP Organization (Prompt 1 Output)**:
+  - [ ] ZIP contains folders: DESIGN, ENERGY, WATER, MATERIALS
+  - [ ] Files are correctly moved into their corresponding measure subfolders
+- [ ] **Area Table (Prompt 2 Output)**:
+  - [ ] "Resumen" or "Areas" tab shows table with space name and m2
 
 ### Tab Navigation
 - [ ] All 4 tabs present: Archivos, Datos Extraídos, Compliance EDGE, Resumen

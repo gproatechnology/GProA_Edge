@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { API } from "@/App";
 import { Plus, Folders, ArrowRight, MagnifyingGlass, Funnel } from "@phosphor-icons/react";
+import { toast } from "sonner";
 import ProjectAnalytics from "./ProjectAnalytics";
 import {
   Dialog,
@@ -21,16 +22,14 @@ import {
 } from "@/components/ui/select";
 
 const TYPOLOGIES = [
-  { value: "Retail", label: "Retail / Comercial" },
-  { value: "Hotel", label: "Hotelero / Hospitalidad" },
-  { value: "Industrial", label: "Industrial / Logística" },
-  { value: "Healthcare", label: "Salud / Hospitalario" },
-  { value: "Office", label: "Oficinas / Administrativo" },
-  { value: "Data Center", label: "Data Center" },
-  { value: "Education", label: "Educativo" },
-  { value: "Transport", label: "Transporte" },
-  { value: "Logistics", label: "Logística" },
+  { value: "Industrial", label: "Industrial" },
   { value: "Residencial", label: "Residencial" },
+  { value: "Hospitalidad", label: "Hospitalidad" },
+  { value: "Corporativo", label: "Corporativo" },
+  { value: "Comercial", label: "Comercial" },
+  { value: "Educativo", label: "Educativo" },
+  { value: "Cultura, Deporte y Salud", label: "Cultura, Deporte y Salud" },
+  { value: "Data Center", label: "Data Center" },
   { value: "Otro", label: "Otro" },
 ];
 
@@ -50,7 +49,7 @@ const getPriorityColor = (priority) => {
   }
 };
 
-export default function ProjectDashboard({ projects, loading, onProjectCreated, onNavigate }) {
+export default function ProjectDashboard({ projects, loading, stats, onProjectCreated, onNavigate }) {
   const [showDialog, setShowDialog] = useState(false);
   const [name, setName] = useState("");
   const [typology, setTypology] = useState("");
@@ -75,8 +74,10 @@ export default function ProjectDashboard({ projects, loading, onProjectCreated, 
       setTypology("");
       setShowDialog(false);
       onProjectCreated();
+      toast.success("Proyecto creado correctamente");
     } catch (e) {
       console.error("Error creating project:", e);
+      toast.error("Error al crear el proyecto");
     } finally {
       setCreating(false);
     }
@@ -92,44 +93,46 @@ export default function ProjectDashboard({ projects, loading, onProjectCreated, 
   const getCountByPriority = (prio) => projects.filter(p => p.priority === prio).length;
   const isFiltered = search !== "" || filterTypology !== "all" || filterPriority !== "all";
 
+  const totalFiles = projects.reduce((sum, p) => sum + (p.file_count || 0), 0);
+  const processedFiles = projects.reduce((sum, p) => sum + (p.processed_count || 0), 0);
+
   return (
-    <div className="p-6 md:p-8 max-w-[1600px] mx-auto bg-background text-foreground" data-testid="project-dashboard">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-fadeIn" data-testid="dashboard">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl tracking-tight font-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground" style={{ fontFamily: "'Outfit', sans-serif" }}>
             Proyectos
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gestiona tus proyectos de certificación EDGE
-          </p>
+          <p className="text-muted-foreground mt-2 font-medium">Gestiona tus proyectos de certificación EDGE</p>
         </div>
         <button
           onClick={() => setShowDialog(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          data-testid="create-project-button"
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:shadow-glow transition-all active:scale-95 shadow-lg"
+          data-testid="create-project-btn"
         >
-          <Plus weight="bold" className="w-4 h-4" />
+          <Plus weight="bold" className="w-5 h-5" />
           Nuevo Proyecto
         </button>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="stat-card">
           <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Total Proyectos</p>
-          <p className="text-2xl font-bold font-mono">{projects.length}</p>
+          <p className="text-2xl font-bold font-mono">{stats?.total_projects ?? projects.length}</p>
         </div>
         <div className="stat-card">
           <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Archivos Totales</p>
-          <p className="text-2xl font-bold font-mono">
-            {projects.reduce((sum, p) => sum + (p.file_count || 0), 0)}
-          </p>
+          <p className="text-2xl font-bold font-mono">{stats?.total_files ?? totalFiles}</p>
         </div>
         <div className="stat-card">
           <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Procesados</p>
-          <p className="text-2xl font-bold text-emerald-500 font-mono">
-            {projects.reduce((sum, p) => sum + (p.processed_count || 0), 0)}
+          <p className="text-2xl font-bold font-mono">{stats?.processed_files ?? processedFiles}</p>
+        </div>
+        <div className="stat-card border-l-4 border-l-emerald-500 bg-emerald-500/5">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-600 mb-1">Reducción CO2</p>
+          <p className="text-2xl font-bold font-mono text-emerald-600">
+            {((stats?.processed_files ?? processedFiles) * 5.2).toFixed(1)} <span className="text-xs">tCO2e</span>
           </p>
         </div>
       </div>

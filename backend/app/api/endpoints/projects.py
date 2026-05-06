@@ -26,8 +26,20 @@ async def list_projects():
     projects = await udb.projects_find()
     result = []
     for p in projects:
-        file_count = await udb.files_count_documents({"project_id": p["id"]})
-        processed_count = await udb.files_count_documents({"project_id": p["id"], "status": "processed"})
+        project_id = p["id"]
+        file_count = await udb.files_count_documents({"project_id": project_id})
+        processed_count = await udb.files_count_documents({"project_id": project_id, "status": "processed"})
+        
+        # Get dynamic stats from analysis logic
+        from app.api.endpoints.analysis import get_edge_status
+        try:
+            status = await get_edge_status(project_id)
+            p["priority"] = "Crítica" if len(status["faltantes"]) > 3 else "Alta" if len(status["faltantes"]) > 0 else "Baja"
+            p["efficiency"] = status["savings"]["energy"]
+        except:
+            p["priority"] = p.get("priority", "Baja")
+            p["efficiency"] = 0
+
         p["file_count"] = file_count
         p["processed_count"] = processed_count
         result.append(ProjectResponse(**p))
@@ -38,8 +50,18 @@ async def get_project(project_id: str):
     project = await udb.projects_find_one({"id": project_id})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
     file_count = await udb.files_count_documents({"project_id": project_id})
     processed_count = await udb.files_count_documents({"project_id": project_id, "status": "processed"})
+    
+    from app.api.endpoints.analysis import get_edge_status
+    try:
+        status = await get_edge_status(project_id)
+        project["priority"] = "Crítica" if len(status["faltantes"]) > 3 else "Alta" if len(status["faltantes"]) > 0 else "Baja"
+        project["efficiency"] = status["savings"]["energy"]
+    except:
+        pass
+
     project["file_count"] = file_count
     project["processed_count"] = processed_count
     return ProjectResponse(**project)

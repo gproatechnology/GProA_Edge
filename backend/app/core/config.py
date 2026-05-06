@@ -18,6 +18,9 @@ DB_NAME = os.getenv('DB_NAME', 'gproa_edge')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') or os.getenv('EMERGENT_LLM_KEY')
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 
+# Google Drive Config (Placeholder for future sync)
+GOOGLE_DRIVE_CREDENTIALS = os.getenv('GOOGLE_DRIVE_CREDENTIALS')  # JSON string or path to file
+
 # Initialize OpenAI Client
 openai_client = None
 if OPENAI_API_KEY and not DEMO_MODE:

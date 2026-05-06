@@ -4,32 +4,55 @@ import { API } from "@/App";
 import {
   UploadSimple,
   FileText,
+  FilePdf,
+  Image,
   Trash,
   CheckCircle,
   WarningCircle,
   Clock,
   SpinnerGap,
+  Eye,
 } from "@phosphor-icons/react";
 
-export default function FileUploadTab({ projectId, files, onRefresh }) {
+import { toast } from "sonner";
+
+export default function FileUploadTab({ projectId, files, onRefresh, onPreview }) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  const ALLOWED_TYPES = [".pdf", ".jpg", ".jpeg", ".png"];
+
   const handleFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
+    
+    const validFiles = Array.from(fileList).filter(f => 
+      ALLOWED_TYPES.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
+
+    if (validFiles.length === 0) {
+      toast.error("Solo se permiten archivos PDF o Imágenes");
+      return;
+    }
+
     setUploading(true);
+    let successCount = 0;
     try {
-      for (const file of fileList) {
+      for (const file of validFiles) {
         const formData = new FormData();
         formData.append("file", file);
         await axios.post(`${API}/projects/${projectId}/files`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        successCount++;
+      }
+      if (successCount > 0) {
+        toast.success(`${successCount} archivo(s) subido(s) correctamente`);
       }
       await onRefresh();
     } catch (e) {
       console.error("Error uploading files:", e);
+      toast.error("Error al subir uno o más archivos");
     } finally {
       setUploading(false);
     }
@@ -42,12 +65,22 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
   };
 
   const handleDeleteFile = async (fileId) => {
+    if (!window.confirm("¿Eliminar este archivo?")) return;
     try {
       await axios.delete(`${API}/files/${fileId}`);
+      toast.success("Archivo eliminado");
       await onRefresh();
     } catch (e) {
       console.error("Error deleting file:", e);
+      toast.error("Error al eliminar el archivo");
     }
+  };
+
+  const getFileIcon = (filename) => {
+    const ext = filename.toLowerCase().split('.').pop();
+    if (ext === 'pdf') return <FilePdf className="w-5 h-5 text-red-500" />;
+    if (['jpg', 'jpeg', 'png'].includes(ext)) return <Image className="w-5 h-5 text-blue-500" />;
+    return <FileText className="w-5 h-5 text-muted-foreground" />;
   };
 
   const statusIcon = (status) => {
@@ -57,7 +90,7 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
       case "error":
         return <WarningCircle weight="fill" className="w-4 h-4 text-destructive" />;
       default:
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
+        return <Clock className="w-4 h-4 text-muted-foreground animate-pulse" />;
     }
   };
 
@@ -75,7 +108,7 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
     <div data-testid="file-upload-tab">
       {/* Upload Zone */}
       <div
-        className={`drop-zone mb-6 ${dragOver ? "drag-over" : ""}`}
+        className={`drop-zone mb-6 group ${dragOver ? "drag-over" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -86,44 +119,36 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
           ref={fileInputRef}
           type="file"
           multiple
+          accept={ALLOWED_TYPES.join(",")}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
           data-testid="file-input"
         />
         {uploading ? (
-          <div className="flex flex-col items-center gap-2">
-            <SpinnerGap className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Subiendo archivos...</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+              <SpinnerGap className="w-6 h-6 text-primary animate-spin" />
+            </div>
+            <p className="text-sm font-bold animate-pulse">Subiendo documentos...</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-2 transition-transform group-hover:scale-110">
-              <UploadSimple className="w-6 h-6" />
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-2 transition-all group-hover:scale-110 group-hover:bg-primary group-hover:text-white shadow-sm group-hover:shadow-glow">
+              <UploadSimple weight="bold" className="w-7 h-7" />
             </div>
             <p className="text-sm font-bold">
               Arrastra archivos aquí o haz clic para seleccionar
             </p>
-            <p className="text-xs text-muted-foreground">
-              Fichas técnicas, planos, memorias, facturas, etc.
+            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mt-1">
+              Solo PDF, JPG o PNG
             </p>
           </div>
         )}
       </div>
 
-      {/* Info banner */}
-      {files.length > 0 && files.some(f => f.status === "pending") && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 flex items-start gap-3 animate-fadeIn" data-testid="pending-alert">
-          <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-foreground leading-relaxed">
-            <span className="font-bold">{files.filter(f => f.status === "pending").length} archivo(s) pendiente(s).</span><br/> 
-            Usa el botón <strong className="text-primary">"Procesar Proyecto EDGE"</strong> en la parte superior para clasificar y analizar todos los archivos.
-          </p>
-        </div>
-      )}
-
       {/* File List */}
       {files.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-16 text-center shadow-sm">
+        <div className="bg-card border border-border rounded-2xl p-16 text-center shadow-sm">
           <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4 text-muted-foreground">
             <FileText className="w-8 h-8" />
           </div>
@@ -133,39 +158,42 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
           </p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <table className="w-full data-table" data-testid="files-table">
             <thead>
-              <tr className="bg-muted/50 border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Archivo</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Tamaño</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Categoría</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Medida</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-wider"></th>
+              <tr className="bg-muted/30 border-b border-border">
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Documento</th>
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado</th>
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Categoría</th>
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Medida</th>
+                <th className="px-6 py-4 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {files.map((f) => (
-                <tr key={f.id} className="hover:bg-muted/30 transition-colors group">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate max-w-[200px] text-sm font-medium">{f.filename}</span>
+                <tr key={f.id} className="hover:bg-muted/20 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-muted/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                        {getFileIcon(f.filename)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate max-w-[240px] text-sm font-bold text-foreground leading-none">{f.filename}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1.5 font-mono">
+                          {f.file_size > 1024 ? `${(f.file_size / 1024).toFixed(1)} KB` : `${f.file_size} B`}
+                        </p>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
-                    {f.file_size > 1024 ? `${(f.file_size / 1024).toFixed(1)} KB` : `${f.file_size} B`}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      {statusIcon(f.status)}
-                      <span className="text-xs font-medium">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-shrink-0">{statusIcon(f.status)}</div>
+                      <span className="text-[10px] font-bold uppercase tracking-tight">
                         {f.status === "pending" ? "Pendiente" : f.status === "processed" ? "Procesado" : "Error"}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     {f.category_edge ? (
                       <span className={`edge-badge ${categoryBadgeClass(f.category_edge)}`}>
                         {f.category_edge}
@@ -174,15 +202,26 @@ export default function FileUploadTab({ projectId, files, onRefresh }) {
                       <span className="text-xs opacity-40">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{f.measure_edge || "-"}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteFile(f.id); }}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      data-testid={`delete-file-${f.id}`}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-4 font-mono text-xs font-bold text-primary">{f.measure_edge || "-"}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {f.status === "processed" && (
+                        <button
+                          onClick={() => onPreview && onPreview(f)}
+                          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                          title="Previsualizar datos"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteFile(f.id); }}
+                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                        data-testid={`delete-file-${f.id}`}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

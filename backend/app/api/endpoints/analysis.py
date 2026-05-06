@@ -119,12 +119,39 @@ async def get_edge_status(project_id: str):
         if v["estado"] == "incompleto"
     ]
 
+    # Calculate Estimated Savings based on KPIs
+    kpis = await get_project_kpis(project_id)
+    savings = {
+        "energy": 0,
+        "water": 0,
+        "materials": 0
+    }
+    
+    # Energy savings estimation (based on Lighting efficiency)
+    if "EEM22" in kpis:
+        val = kpis["EEM22"]["valor"]
+        if val >= 90: savings["energy"] = 35
+        elif val >= 60: savings["energy"] = 20
+        else: savings["energy"] = 5
+
+    # Water savings estimation
+    if "WEM01" in kpis:
+        val = kpis["WEM01"]["valor"]
+        if val <= 6: savings["water"] = 40
+        elif val <= 9: savings["water"] = 25
+        else: savings["water"] = 10
+    
+    # Default materials (until we have M-WBS)
+    if "MATERIALS" in categories:
+        savings["materials"] = min(categories["MATERIALS"] * 10, 30)
+
     total = await udb.files_count_documents({"project_id": project_id})
     processed = await udb.files_count_documents({"project_id": project_id, "status": "processed"})
 
     return {
         "categories": categories,
         "measures": measures,
+        "savings": savings,
         "faltantes": faltantes,
         "total_files": total,
         "processed_files": processed,

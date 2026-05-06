@@ -16,6 +16,7 @@ class ProjectResponse(BaseModel):
     priority: Optional[str] = None
     square_meters: Optional[float] = None
     annual_consumption_kwh: Optional[float] = None
+    efficiency: Optional[float] = None
 
 class FileResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
