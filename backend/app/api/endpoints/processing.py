@@ -33,16 +33,58 @@ async def _run_batch_processing(job_id: str, files: list):
 
 @router.post("/projects/{project_id}/process-edge")
 async def process_edge_project(project_id: str):
+    from app.core.config import openai_client
     project = await udb.projects_find_one({"id": project_id})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
     files = await udb.files_find({"project_id": project_id})
-
     if not files:
         raise HTTPException(status_code=400, detail="No hay archivos en el proyecto")
 
     job_id = str(uuid.uuid4())
+    
+    # --- MODO DEMO INSTANTÁNEO ---
+    if not openai_client:
+        logger.info(f"MODO DEMO: Procesando {len(files)} archivos instantáneamente.")
+        results = []
+        for f in files:
+            res = await process_single_file_pipeline(f, job_id)
+            results.append(res)
+        
+        # Registrar el job como completado para evitar 404 en el polling
+        processing_jobs[job_id] = {
+            "project_id": project_id,
+            "status": "completed",
+            "total": len(files),
+            "processed": len(files),
+            "current_file": "",
+            "current_step": "Completado (Demo)",
+            "results": results,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        return {
+            "job_id": job_id, 
+            "total_files": len(files), 
+            "status": "completed", 
+            "message": "Procesamiento demo completado instantáneamente",
+            "results": results
+        }
+    # -----------------------------
+
+    # Actualizar métricas del proyecto inmediatamente para refrescar el dashboard
+    from app.services.edge_rules import validate_project_wbs, get_project_coverage
+    processed_files = [f for f in files if f.get("status") == "processed"]
+    if processed_files:
+        validate_project_wbs(processed_files)
+        coverage = get_project_coverage(processed_files)
+        await udb.projects_update_one({"id": project_id}, {"$set": {
+            "efficiency": coverage["coverage_percent"],
+            "processed_count": len(processed_files)
+        }})
+
     processing_jobs[job_id] = {
         "project_id": project_id,
         "status": "running",
@@ -61,8 +103,26 @@ async def process_edge_project(project_id: str):
 @router.get("/projects/{project_id}/process-status/{job_id}")
 async def get_process_status(project_id: str, job_id: str):
     job = processing_jobs.get(job_id)
+    
     if not job:
+        # Fallback para Modo Demo o reinicios: si no existe el job pero los archivos están procesados
+        processed_count = await udb.files_count_documents({"project_id": project_id, "status": "processed"})
+        total_count = await udb.files_count_documents({"project_id": project_id})
+        
+        if total_count > 0 and processed_count == total_count:
+            return {
+                "job_id": job_id,
+                "status": "completed",
+                "total": total_count,
+                "processed": processed_count,
+                "percent": 100,
+                "current_file": "",
+                "current_step": "Completado (Rescatado de DB)",
+                "results": [],
+            }
+        
         raise HTTPException(status_code=404, detail="Job no encontrado")
+        
     return {
         "job_id": job_id,
         "status": job["status"],

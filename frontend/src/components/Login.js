@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Lock, Mail, ArrowRight } from "lucide-react";
 import logoEosis from "../assets/branding/logo_eosis.png";
 import logoEdge from "../assets/branding/logo_edge.png";
+import avatarLuis from "../assets/branding/avatar_luis.png";
+import avatarJorge from "../assets/branding/avatar_jorge.png";
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -14,8 +16,8 @@ export default function Login({ onLogin }) {
     
     // Identificar perfil basado en el email
     const user = email.toLowerCase().includes("jorge") 
-      ? { name: "Jorge", role: "manager", avatar: "J" }
-      : { name: "Luis", role: "consultant", avatar: "L" };
+      ? { name: "Jorge", role: "manager", avatar: "J", image: avatarJorge }
+      : { name: "Luis", role: "consultant", avatar: "L", image: avatarLuis };
 
     setTimeout(() => {
       setIsLoading(false);

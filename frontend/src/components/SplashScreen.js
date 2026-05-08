@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Zap } from "lucide-react";
+import logoEdge from "../assets/branding/logo_edge.png";
 
 export default function SplashScreen({ onFinish }) {
   const [fadeOut, setFadeOut] = useState(false);
@@ -27,15 +27,15 @@ export default function SplashScreen({ onFinish }) {
         fadeOut ? "opacity-0" : "opacity-100"
       }`}
     >
-      <div className="flex flex-col items-center animate-pulse">
-        <div className="h-20 w-20 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.4)] mb-6">
-          <Zap size={40} className="text-white" fill="currentColor" />
+      <div className="flex flex-col items-center">
+        <div className="h-24 w-auto mb-8 animate-fadeIn">
+          <img src={logoEdge} alt="EDGE Logo" className="h-full object-contain" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
-          GProA Edge
+        <h1 className="text-3xl font-bold tracking-tight mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          Assistant Pro
         </h1>
-        <p className="text-slate-400 tracking-widest uppercase text-sm font-semibold">
-          Doc Processor
+        <p className="text-slate-400 tracking-widest uppercase text-xs font-bold">
+          GProA EDGE Certification
         </p>
       </div>
       

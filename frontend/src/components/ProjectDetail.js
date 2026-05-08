@@ -33,6 +33,7 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
   const [currentJobId, setCurrentJobId] = useState(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -127,6 +128,7 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
     setProcessingEdge(false);
     setCurrentJobId(null);
     refreshData();
+    setRefreshKey(prev => prev + 1);
   }, [refreshData]);
 
   if (loading) {
@@ -251,8 +253,10 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
         {activeTab === "data" && (
           <ExtractedDataTab projectId={projectId} files={files} onRefresh={refreshData} />
         )}
-        {activeTab === "compliance" && <EdgeComplianceTab files={files} />}
-        {activeTab === "status" && <EdgeStatusTab projectId={projectId} />}
+        {activeTab === "compliance" && (
+          <EdgeComplianceTab projectId={projectId} refreshKey={refreshKey} />
+        )}
+        {activeTab === "status" && <EdgeStatusTab projectId={projectId} status={status} />}
       </div>
 
       <BatchProgressModal

@@ -92,6 +92,16 @@ EDGE_WBS = {
         "campos_extraccion": ["watts", "lumens", "tipo_equipo", "cantidad"],
     },
 
+    # ═══════════════ DESIGN & ARCHITECTURE ═══════════════
+    "DESIGN": {
+        "categoria": "DESIGN",
+        "nombre": "Desglose de Áreas y Cargas",
+        "descripcion": "Planos arquitectónicos y breakdown de áreas del proyecto",
+        "documentos_requeridos": ["plano", "memoria"],
+        "calculo": "area_total",
+        "campos_extraccion": ["area_m2", "espacios", "niveles"],
+    },
+
     # ═══════════════ WATER ═══════════════
     "WEM01": {
         "categoria": "WATER",

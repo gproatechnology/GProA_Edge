@@ -12,6 +12,8 @@ import {
   Clock,
   SpinnerGap,
   Eye,
+  PencilRuler,
+  Table,
 } from "@phosphor-icons/react";
 
 import { toast } from "sonner";
@@ -21,7 +23,7 @@ export default function FileUploadTab({ projectId, files, onRefresh, onPreview }
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  const ALLOWED_TYPES = [".pdf", ".jpg", ".jpeg", ".png"];
+  const ALLOWED_TYPES = [".pdf", ".jpg", ".jpeg", ".png", ".dwg", ".dxf", ".xlsx", ".xls"];
 
   const handleFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
@@ -31,7 +33,7 @@ export default function FileUploadTab({ projectId, files, onRefresh, onPreview }
     );
 
     if (validFiles.length === 0) {
-      toast.error("Solo se permiten archivos PDF o Imágenes");
+      toast.error("Formato de archivo no soportado (Use PDF, Imágenes, CAD o Excel)");
       return;
     }
 
@@ -80,6 +82,8 @@ export default function FileUploadTab({ projectId, files, onRefresh, onPreview }
     const ext = filename.toLowerCase().split('.').pop();
     if (ext === 'pdf') return <FilePdf className="w-5 h-5 text-red-500" />;
     if (['jpg', 'jpeg', 'png'].includes(ext)) return <Image className="w-5 h-5 text-blue-500" />;
+    if (['dwg', 'dxf'].includes(ext)) return <PencilRuler className="w-5 h-5 text-emerald-500" />;
+    if (['xlsx', 'xls', 'csv'].includes(ext)) return <Table className="w-5 h-5 text-green-600" />;
     return <FileText className="w-5 h-5 text-muted-foreground" />;
   };
 
@@ -140,7 +144,7 @@ export default function FileUploadTab({ projectId, files, onRefresh, onPreview }
               Arrastra archivos aquí o haz clic para seleccionar
             </p>
             <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mt-1">
-              Solo PDF, JPG o PNG
+              PDF, Imágenes, CAD (DWG/DXF) o Excel
             </p>
           </div>
         )}

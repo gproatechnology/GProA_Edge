@@ -131,6 +131,18 @@ class UnifiedDB:
                 await self.conn.commit()
                 return type('Result', (), {'deleted_count': cur.rowcount})()
 
+    async def projects_update_one(self, query: dict, update: dict):
+        if self.mode == "mongodb":
+            await db.projects.update_one(query, update)
+        else:
+            await self._ensure_sqlite()
+            set_clause = [f"{k}=?" for k in update["$set"].keys()]
+            where_clause = [f"{k}=?" for k in query.keys()]
+            params = list(update["$set"].values()) + list(query.values())
+            sql = f"UPDATE projects SET {', '.join(set_clause)} WHERE {' AND '.join(where_clause)}"
+            await self.conn.execute(sql, params)
+            await self.conn.commit()
+
     async def projects_delete_many(self, query: dict):
         if self.mode == "mongodb":
             await db.projects.delete_many(query)
@@ -262,11 +274,16 @@ class UnifiedDB:
             await db.files.delete_many(query)
         else:
             await self._ensure_sqlite()
-            where = [f"{k}=?" for k in query.keys()]
-            params = list(query.values())
-            sql = f"DELETE FROM files WHERE {' AND '.join(where)}"
-            async with self.conn.execute(sql, params):
-                await self.conn.commit()
+            if not query:
+                sql = "DELETE FROM files"
+                params = []
+            else:
+                where = [f"{k}=?" for k in query.keys()]
+                params = list(query.values())
+                sql = f"DELETE FROM files WHERE {' AND '.join(where)}"
+            
+            await self.conn.execute(sql, params)
+            await self.conn.commit()
 
     async def files_count_documents(self, query: dict):
         if self.mode == "mongodb":

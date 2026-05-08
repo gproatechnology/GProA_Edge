@@ -157,3 +157,17 @@ async def get_edge_status(project_id: str):
         "processed_files": processed,
         "wbs_validation": validation,
     }
+
+@router.get("/debug/compliance/{project_id}")
+async def debug_compliance(project_id: str):
+    all_files = await udb.files_find({"project_id": project_id})
+    processed = [f for f in all_files if f.get("status") == "processed"]
+    validation = validate_project_wbs(processed)
+    
+    return {
+        "project_id": project_id,
+        "total_files_in_db": len(all_files),
+        "processed_files_count": len(processed),
+        "validation_keys": list(validation.keys()),
+        "raw_files": processed
+    }

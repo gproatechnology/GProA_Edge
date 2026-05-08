@@ -23,9 +23,15 @@ GOOGLE_DRIVE_CREDENTIALS = os.getenv('GOOGLE_DRIVE_CREDENTIALS')  # JSON string 
 
 # Initialize OpenAI Client
 openai_client = None
-if OPENAI_API_KEY and not DEMO_MODE:
-    from openai import AsyncOpenAI
-    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-    logger.info("Using OpenAI API")
+is_dummy_key = OPENAI_API_KEY == "sk-your-key-here" or not OPENAI_API_KEY
+
+if not is_dummy_key and not DEMO_MODE:
+    try:
+        from openai import AsyncOpenAI
+        openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        logger.info("Using OpenAI API")
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI client: {e}")
+        logger.info("Falling back to Demo mode")
 else:
-    logger.info("Demo mode: using mock AI responses")
+    logger.info("Demo mode active: using mock AI responses (Dummy key or DEMO_MODE=true)")

@@ -20,7 +20,7 @@ const CATEGORY_CONFIG = {
   DESIGN: { icon: PencilRuler, bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20", textColor: "text-emerald-500", iconColor: "text-emerald-500", label: "Diseno" },
 };
 
-export default function EdgeComplianceTab({ projectId }) {
+export default function EdgeComplianceTab({ projectId, refreshKey }) {
   const [validation, setValidation] = useState(null);
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export default function EdgeComplianceTab({ projectId }) {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshKey]);
 
   if (loading) {
     return (
@@ -53,7 +53,11 @@ export default function EdgeComplianceTab({ projectId }) {
     );
   }
 
-  if (!validation || validation.processed_files === 0) {
+  const measures = validation?.measures || {};
+  const processedFilesCount = validation?.processed_files || 0;
+  const hasData = Object.keys(measures).length > 0 || processedFilesCount > 0;
+
+  if (!validation || !hasData) {
     return (
       <div className="bg-card border border-border rounded-xl p-20 text-center shadow-sm" data-testid="compliance-empty">
         <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4 text-muted-foreground">
@@ -68,7 +72,6 @@ export default function EdgeComplianceTab({ projectId }) {
   }
 
   const coverage = validation.coverage;
-  const measures = validation.measures;
   const sortedMeasures = Object.entries(measures).sort(([a], [b]) => a.localeCompare(b));
 
   return (

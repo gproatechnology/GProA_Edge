@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { Folders, House, SignOut, Moon, Sun } from "@phosphor-icons/react";
 import logoEosis from "../assets/branding/logo_eosis.png";
 import logoEdge from "../assets/branding/logo_edge.png";
 
-export default function Sidebar({ projects, onNavigate, stats }) {
+export default function Sidebar({ projects, onNavigate, stats, user }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
   
@@ -30,6 +31,8 @@ export default function Sidebar({ projects, onNavigate, stats }) {
       setIsDark(true);
     }
   }, []);
+
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("gproa_session");
@@ -127,27 +130,60 @@ export default function Sidebar({ projects, onNavigate, stats }) {
         </div>
       </nav>
 
-      {/* Footer / User Profile */}
-      <div className="px-3 py-4 border-t border-border bg-muted/10">
-        <div className="flex items-center gap-3 px-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20">
-            {user?.avatar || "U"}
+      {/* Footer / User Profile with Menu */}
+      <div className="px-3 py-4 border-t border-border bg-muted/10 relative">
+        {/* User Popover Menu */}
+        {showUserMenu && (
+          <div className="absolute bottom-[calc(100%-8px)] left-3 right-3 mb-2 bg-card border border-border rounded-2xl shadow-xl z-50 py-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="px-3 py-2 mb-1 border-b border-border/50">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Opciones Especiales</p>
+            </div>
+            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted text-foreground transition-colors text-left">
+              <div className="w-5 h-5 rounded bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <Folders size={12} weight="bold" />
+              </div>
+              <span>Panel de Auditoría</span>
+            </button>
+            <button className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted text-foreground transition-colors text-left">
+              <div className="w-5 h-5 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                <House size={12} weight="bold" />
+              </div>
+              <span>Configuración EDGE</span>
+            </button>
+            <div className="h-px bg-border/50 my-1"></div>
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-destructive/10 text-destructive transition-colors font-medium text-left"
+            >
+              <div className="w-5 h-5 rounded bg-destructive/10 flex items-center justify-center">
+                <SignOut size={12} weight="bold" />
+              </div>
+              <span>Cerrar Sesión</span>
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
+        )}
+
+        <button 
+          onClick={() => setShowUserMenu(!showUserMenu)}
+          className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all ${showUserMenu ? 'bg-muted ring-1 ring-border' : 'hover:bg-muted/50'}`}
+        >
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-primary/10 flex items-center justify-center shadow-sm">
+            {user?.image ? (
+              <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-primary font-bold text-xs">{user?.avatar || "U"}</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-bold truncate">{user?.name || "Usuario"}</p>
-            <p className="text-[10px] text-muted-foreground capitalize">{user?.role || "Invitado"}</p>
+            <p className="text-[10px] text-muted-foreground capitalize leading-none mt-0.5">{user?.role || "Invitado"}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10"
-            title="Cerrar Sesión"
-          >
-            <SignOut className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-[9px] text-muted-foreground font-medium px-2 text-center">
-          EDGE Certification Tool v1.0
-        </p>
+          <div className={`transition-transform duration-300 ${showUserMenu ? 'rotate-180' : ''}`}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-muted-foreground">
+              <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </button>
       </div>
     </aside>
   );

@@ -13,22 +13,46 @@ async def upload_file(project_id: str, file: UploadFile = File(...)):
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
+    import os
+    UPLOAD_DIR = os.path.join("uploads")
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+
+    file_id = str(uuid.uuid4())
+    ext = file.filename.split('.')[-1].lower() if '.' in file.filename else ""
+    save_filename = f"{file_id}.{ext}"
+    file_path = os.path.join(UPLOAD_DIR, save_filename)
+
     content_bytes = await file.read()
-    try:
-        text_content = content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        text_content = content_bytes.decode("latin-1", errors="ignore")
+    
+    # Guardar archivo fisico
+    with open(file_path, "wb") as f:
+        f.write(content_bytes)
+
+    # Solo intentar decodificar texto para archivos legibles (PDF, TXT, etc)
+    text_content = ""
+    if ext in ["txt", "csv", "json", "md"]:
+        try:
+            text_content = content_bytes.decode("utf-8")
+        except:
+            text_content = content_bytes.decode("latin-1", errors="ignore")
+    elif ext == "pdf":
+        # Placeholder for PDF text extraction if needed during upload
+        text_content = f"[Archivo PDF: {file.filename}]"
+    else:
+        text_content = f"[Archivo Binario {ext.upper()}: {file.filename}]"
 
     doc = {
-        "id": str(uuid.uuid4()),
+        "id": file_id,
         "project_id": project_id,
         "filename": file.filename,
         "file_size": len(content_bytes),
+        "file_path": file_path, # Guardamos la ruta real
         "content_text": text_content,
         "status": "pending",
         "category_edge": None,
         "measure_edge": None,
-        "doc_type": None,
+        "doc_type": "plano" if ext in ["dwg", "dxf"] else None,
         "confidence": None,
         "watts": None,
         "lumens": None,
