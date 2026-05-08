@@ -19,12 +19,20 @@ class UnifiedDB:
     def __init__(self):
         self.mode = "mongodb" if MONGO_URL else "sqlite"
         self.conn = None  # Lazy-init on first use
+        # Render support: use a persistent path if provided
+        sqlite_custom_path = os.getenv("SQLITE_PATH")
+        if sqlite_custom_path:
+            self.sqlite_path = sqlite_custom_path
+        else:
+            self.sqlite_path = DB_PATH
+        
+        logger.info(f"Database mode: {self.mode}")
 
     async def _ensure_sqlite(self):
         """Initialize SQLite connection and schema on first use."""
         if self.conn is None:
             print(">>> Initializing SQLite connection...")
-            self.conn = await aiosqlite.connect(DB_PATH)
+            self.conn = await aiosqlite.connect(self.sqlite_path)
             self.conn.row_factory = aiosqlite.Row
             await self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS projects (

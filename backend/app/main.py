@@ -39,12 +39,29 @@ app.add_middleware(
 )
 
 # Setup Static Files
-frontend_build_dir = ROOT_DIR.parent / "frontend" / "build"
+# Render support: check for 'dist' (Vite) or 'build' (CRA)
+frontend_build_dir = ROOT_DIR.parent / "frontend" / "dist"
+if not frontend_build_dir.exists():
+    frontend_build_dir = ROOT_DIR.parent / "frontend" / "build"
+
 if frontend_build_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(frontend_build_dir / "static")), name="static")
+    # Mount static assets
+    static_dir = frontend_build_dir / "static"
+    if not static_dir.exists():
+        # Vite puts everything in root or assets
+        static_dir = frontend_build_dir / "assets"
+    
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    if (frontend_build_dir / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_build_dir / "assets")), name="assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
+        # Prevent intercepting API calls
+        if full_path.startswith("api"):
+            return {"error": "API route not found"}, 404
+            
         try:
             path_to_file = frontend_build_dir / full_path
             if path_to_file.is_file():
@@ -54,10 +71,11 @@ if frontend_build_dir.exists():
             if index_file.is_file():
                 return StarletteFileResponse(str(index_file))
             
-            return {"error": "Frontend build/index.html not found."}, 404
+            return {"error": "Frontend entry point not found."}, 404
         except Exception as e:
             return {"error": f"Internal server error: {str(e)}"}, 500
 else:
+    logger.warning("Frontend build directory not found. API only mode.")
     logger.warning("Frontend build directory not found. API only mode.")
 
 @app.on_event("shutdown")

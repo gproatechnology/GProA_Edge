@@ -1,0 +1,3 @@
+admin
+aBeObmHswCjLP18C
+mongodb+srv://admin:aBeObmHswCjLP18C@clustergproaeosisedge.ng08vfj.mongodb.net/?appName=ClusterGProAEOSISEdge
