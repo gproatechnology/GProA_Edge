@@ -211,6 +211,47 @@ export default function EdgeStatusTab({ projectId }) {
         </div>
       )}
 
+      {/* System Logs */}
+      {status.logs && status.logs.length > 0 && (
+        <div className="animate-fadeIn" style={{ animationDelay: '600ms' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>
+              Registro de Procesamiento (System Logs)
+            </h3>
+            <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase">Consola en Vivo</span>
+          </div>
+          <div className="bg-[#0f1117] border border-slate-800 rounded-xl p-4 font-mono text-[11px] leading-relaxed shadow-2xl">
+            <div className="flex flex-col gap-1.5">
+              {status.logs.map((log, i) => {
+                const isError = log.includes("ERROR");
+                const isWarning = log.includes("WARNING");
+                const isInfo = log.includes("INFO");
+                const isDemo = log.includes("MODO DEMO");
+                
+                return (
+                  <div key={i} className="flex gap-3 group">
+                    <span className="text-slate-600 shrink-0 select-none">[{new Date().toLocaleTimeString()}]</span>
+                    <span className={
+                      isError ? "text-red-400" : 
+                      isWarning ? "text-amber-400" : 
+                      isDemo ? "text-purple-400 font-bold" :
+                      isInfo ? "text-emerald-400" : 
+                      "text-slate-300"
+                    }>
+                      {log}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex gap-3 animate-pulse mt-1">
+                <span className="text-slate-600">[{new Date().toLocaleTimeString()}]</span>
+                <span className="text-primary font-bold">_</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* All complete */}
       {status.faltantes && status.faltantes.length === 0 && status.processed_files > 0 && (
         <div className="stat-card border-l-4 border-l-emerald-500 bg-emerald-500/5 animate-fadeIn">

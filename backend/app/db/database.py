@@ -50,35 +50,20 @@ class UnifiedDB:
                 )
             """)
             # Migracion automatica para bases de datos existentes
-            for col, col_type in [("priority", "TEXT"), ("square_meters", "REAL"), ("annual_consumption_kwh", "REAL")]:
+            # Projects
+            for col, col_type in [("priority", "TEXT"), ("square_meters", "REAL"), ("annual_consumption_kwh", "REAL"), ("efficiency", "REAL")]:
                 try:
                     await self.conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {col_type}")
                 except:
                     pass # La columna ya existe
-            await self.conn.execute("""
-                CREATE TABLE IF NOT EXISTS files (
-                    id TEXT PRIMARY KEY,
-                    project_id TEXT NOT NULL,
-                    filename TEXT NOT NULL,
-                    file_size INTEGER NOT NULL,
-                    content_text TEXT,
-                    status TEXT DEFAULT 'pending',
-                    category_edge TEXT,
-                    measure_edge TEXT,
-                    doc_type TEXT,
-                    confidence REAL,
-                    watts REAL,
-                    lumens REAL,
-                    tipo_equipo TEXT,
-                    marca TEXT,
-                    modelo TEXT,
-                    areas TEXT,
-                    specialized_data TEXT,
-                    uploaded_at TEXT NOT NULL
-                )
-            """)
-            await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_files_project ON files(project_id)")
-            await self.conn.execute("CREATE INDEX IF NOT EXISTS idx_files_status ON files(status)")
+            
+            # Files
+            for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT")]:
+                try:
+                    await self.conn.execute(f"ALTER TABLE files ADD COLUMN {col} {col_type}")
+                except:
+                    pass # La columna ya existe
+
             await self.conn.commit()
             print(">>> SQLite database ready")
 
@@ -88,12 +73,13 @@ class UnifiedDB:
         else:
             await self._ensure_sqlite()
             await self.conn.execute("""
-                INSERT INTO projects (id, name, typology, created_at, file_count, processed_count, priority, square_meters, annual_consumption_kwh)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO projects (id, name, typology, created_at, file_count, processed_count, priority, square_meters, annual_consumption_kwh, efficiency)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 doc["id"], doc["name"], doc["typology"], doc["created_at"],
                 doc.get("file_count", 0), doc.get("processed_count", 0),
-                doc.get("priority"), doc.get("square_meters"), doc.get("annual_consumption_kwh")
+                doc.get("priority"), doc.get("square_meters"), doc.get("annual_consumption_kwh"),
+                doc.get("efficiency")
             ))
             await self.conn.commit()
 
@@ -103,7 +89,7 @@ class UnifiedDB:
             return await db.projects.find_one(query, proj)
         else:
             await self._ensure_sqlite()
-            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh"]
+            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh", "efficiency"]
             where = [f"{k}=?" for k in query.keys()]
             params = list(query.values())
             sql = f"SELECT {', '.join(columns)} FROM projects WHERE {' AND '.join(where)}"
@@ -118,7 +104,7 @@ class UnifiedDB:
             return await cursor.to_list(100)
         else:
             await self._ensure_sqlite()
-            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh"]
+            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh", "efficiency"]
             sql = f"SELECT {', '.join(columns)} FROM projects"
             params = []
             if query:
@@ -179,8 +165,8 @@ class UnifiedDB:
                     id, project_id, filename, file_size, content_text, status,
                     category_edge, measure_edge, doc_type, confidence,
                     watts, lumens, tipo_equipo, marca, modelo,
-                    areas, specialized_data, uploaded_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    areas, specialized_data, uploaded_at, cost, consumption_kwh, file_path
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 doc["id"], doc["project_id"], doc["filename"], doc["file_size"],
                 doc.get("content_text"), doc.get("status", "pending"),
@@ -188,7 +174,8 @@ class UnifiedDB:
                 doc.get("confidence"),
                 doc.get("watts"), doc.get("lumens"), doc.get("tipo_equipo"),
                 doc.get("marca"), doc.get("modelo"),
-                areas, specialized, doc.get("uploaded_at")
+                areas, specialized, doc.get("uploaded_at"),
+                doc.get("cost"), doc.get("consumption_kwh"), doc.get("file_path")
             ))
             await self.conn.commit()
 
@@ -201,7 +188,7 @@ class UnifiedDB:
             columns = ["id", "project_id", "filename", "file_size", "content_text", "status",
                        "category_edge", "measure_edge", "doc_type", "confidence",
                        "watts", "lumens", "tipo_equipo", "marca", "modelo",
-                       "areas", "specialized_data", "uploaded_at"]
+                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path"]
             if projection and "content_text" in projection and projection["content_text"] == 0:
                 columns = [c for c in columns if c != "content_text"]
             where = [f"{k}=?" for k in query.keys()]
@@ -223,7 +210,7 @@ class UnifiedDB:
             columns = ["id", "project_id", "filename", "file_size", "status",
                        "category_edge", "measure_edge", "doc_type", "confidence",
                        "watts", "lumens", "tipo_equipo", "marca", "modelo",
-                       "areas", "specialized_data", "uploaded_at"]
+                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path"]
             if projection and "content_text" in projection and projection["content_text"] == 0:
                 columns = [c for c in columns if c != "content_text"]
             sql = f"SELECT {', '.join(columns)} FROM files"

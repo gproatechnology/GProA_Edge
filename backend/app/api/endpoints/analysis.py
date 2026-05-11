@@ -148,6 +148,25 @@ async def get_edge_status(project_id: str):
     total = await udb.files_count_documents({"project_id": project_id})
     processed = await udb.files_count_documents({"project_id": project_id, "status": "processed"})
 
+    # Generar logs de procesamiento basados en el estado real de los archivos
+    logs = []
+    from app.core.config import DEMO_MODE
+    if DEMO_MODE:
+        logs.append(f"MODO DEMO: Procesando {total} archivos con valores de prueba.")
+    
+    for f in files:
+        fname = f.get("filename")
+        status = f.get("status")
+        measure = f.get("measure_edge", "UNKNOWN")
+        
+        if status == "processed":
+            logs.append(f"INFO: {fname} procesado satisfactoriamente como {measure}.")
+            sd = f.get("specialized_data", {})
+            if sd and sd.get("status") == "warning":
+                logs.append(f"WARNING: {fname} - {sd.get('mensaje')}")
+        elif status == "error":
+            logs.append(f"ERROR: Falló procesamiento de {fname}: {f.get('error_msg')}")
+
     return {
         "categories": categories,
         "measures": measures,
@@ -156,6 +175,7 @@ async def get_edge_status(project_id: str):
         "total_files": total,
         "processed_files": processed,
         "wbs_validation": validation,
+        "logs": logs[-10:] # Enviar solo los últimos 10 eventos
     }
 
 @router.get("/debug/compliance/{project_id}")

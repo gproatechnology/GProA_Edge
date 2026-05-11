@@ -1,4 +1,5 @@
 import fitz # PyMuPDF
+import pdfplumber
 import logging
 import re
 from typing import Dict, Any, List
@@ -32,15 +33,19 @@ class PDFParser(BaseParser):
                     "detected_areas": vector_data
                 })
 
+            # Extracción de TABLAS (Cuadros de áreas, cargas, etc.)
+            tables_data = self._extract_tables_with_plumber(file_path)
+            
             return {
                 "format": "PDF",
                 "page_count": len(doc),
                 "metadata": self.get_metadata(file_path),
                 "extracted_parameters": self._extract_technical_params(full_text),
                 "geometry": pages_data,
+                "tables": tables_data,
                 "text_summary": {
                     "total_chars": len(full_text),
-                    "detected_areas_from_text": self._extract_areas_from_text(full_text)
+                    "detected_areas_from_text": self._extract_areas_from_text(full_text, tables_data)
                 }
             }
         except Exception as e:
@@ -70,20 +75,55 @@ class PDFParser(BaseParser):
                 params[key] = float(match.group(1))
         return params
 
-    def _extract_areas_from_text(self, text: str) -> List[Dict[str, Any]]:
-        """Busca menciones de áreas en el texto (ej: 'Local 1: 45.5 m2')."""
+    def _extract_areas_from_text(self, text: str, tables_data: List[List[List[str]]] = None) -> List[Dict[str, Any]]:
+        """Busca menciones de áreas en el texto y en tablas extraídas."""
         areas = []
+        
+        # 1. Buscar en tablas (Cuadros de Áreas) - Muy confiable
+        if tables_data:
+            for table in tables_data:
+                for row in table:
+                    # Buscar una fila que tenga un número y algo que parezca m2
+                    row_str = " ".join([str(c) for c in row if c])
+                    match = re.search(r'(\d+[\.,]\d+)\s*(m2|m²|mt2)', row_str, re.IGNORECASE)
+                    if match:
+                        val = float(match.group(1).replace(',', '.'))
+                        # El nombre suele estar en la primera o segunda columna
+                        name = str(row[0]) if len(row) > 0 else "Espacio de Tabla"
+                        areas.append({"nombre": name, "area_m2": val, "unit": "m2", "source": "table"})
+
+        # 2. Buscar en texto plano
         patterns = [
-            r'(?:Area|Superficie|Total):\s*(\d+(?:\.\d+)?)\s*(?:m2|m²|sqm)',
-            r'(\d+(?:\.\d+)?)\s*(?:m2|m²|sqm)'
+            r'(?:Area|Superficie|Total|Local|Sala|Recamara)[: ]*(\d+[\.,]\d+)\s*(?:m2|m²|mt2|sqm)',
+            r'(\d+[\.,]\d+)\s*(?:m2|m²|mt2|sqm)'
         ]
         for pattern in patterns:
             matches = re.finditer(pattern, text, re.IGNORECASE)
             for m in matches:
-                val = float(m.group(1))
-                if val > 1.0: # Ignorar valores irrelevantes
-                    areas.append({"value": val, "unit": "m2"})
+                val = float(m.group(1).replace(',', '.'))
+                if 1.0 < val < 10000.0: # Ignorar valores irrelevantes
+                    # Intentar capturar el nombre previo
+                    context = text[max(0, m.start()-30):m.start()].strip()
+                    name_match = re.search(r'([a-zA-ZáéíóúÁÉÍÓÚ ]+)$', context)
+                    name = name_match.group(1).strip() if name_match else "Area Detectada"
+                    
+                    # Evitar duplicados de tablas
+                    if not any(abs(a["area_m2"] - val) < 0.1 for a in areas):
+                        areas.append({"nombre": name, "area_m2": val, "unit": "m2", "source": "text"})
         return areas
+
+    def _extract_tables_with_plumber(self, file_path: str) -> List[Any]:
+        """Extrae tablas estructuradas usando pdfplumber."""
+        tables = []
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    extracted = page.extract_tables()
+                    if extracted:
+                        tables.extend(extracted)
+        except Exception as e:
+            logger.error(f"Error extrayendo tablas con pdfplumber: {e}")
+        return tables
 
     def _process_vector_geometry(self, paths: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Procesa rutas vectoriales para identificar polígonos cerrados (áreas)."""

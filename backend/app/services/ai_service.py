@@ -157,6 +157,20 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                 det_data = cad_parser.parse(file_path)
             elif ext == 'pdf':
                 det_data = pdf_parser.parse(file_path)
+                # FALLBACK: Si el PDF no tiene texto (escaneado), usar Vision API
+                text_len = det_data.get("text_summary", {}).get("total_chars", 0)
+                if text_len < 50:
+                    logger.info(f"PDF {filename} seems scanned (text len: {text_len}). Using Vision API.")
+                    vision_data = await image_processor.process(file_path)
+                    if vision_data:
+                        # Fusionar datos de visión (especialmente parámetros extraídos)
+                        if "extracted_parameters" in vision_data:
+                            if "extracted_parameters" not in det_data: det_data["extracted_parameters"] = {}
+                            det_data["extracted_parameters"].update(vision_data["extracted_parameters"])
+                        if "areas" in vision_data:
+                            det_data["areas"] = vision_data["areas"]
+                        if "classification" in vision_data:
+                            update.update(vision_data["classification"])
             elif ext in ['xlsx', 'xls', 'csv']:
                 det_data = excel_parser.parse(file_path)
             elif ext == 'docx':
@@ -192,9 +206,18 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                     "status": "fail"
                 }
             
-            # Transfer areas
-            if "areas" in det_data:
-                update["areas"] = det_data["areas"]
+            # Transfer areas (Geometric + Text)
+            all_areas = det_data.get("areas", [])
+            text_areas = det_data.get("text_summary", {}).get("detected_areas_from_text", [])
+            if text_areas:
+                # Evitar duplicados simples por valor
+                existing_vals = [a["area_m2"] for a in all_areas]
+                for ta in text_areas:
+                    if ta["area_m2"] not in existing_vals:
+                        all_areas.append(ta)
+            
+            if all_areas:
+                update["areas"] = all_areas
             
             # Transfer technical parameters from deterministic parser if any
             if "extracted_parameters" in det_data:

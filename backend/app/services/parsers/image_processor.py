@@ -1,7 +1,9 @@
 import base64
-import logging
+import os
 import json
-from typing import Dict, Any
+import logging
+import fitz # PyMuPDF para convertir PDF a imagen
+from typing import Dict, Any, List
 from app.core.config import openai_client, OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -10,16 +12,34 @@ class ImageProcessor:
     """Procesador de imágenes técnicas mediante IA (OpenAI Vision)."""
 
     async def process(self, file_path: str, hint_measure: str = "") -> Dict[str, Any]:
-        """Analiza una imagen y extrae parámetros técnicos."""
+        """Procesa una imagen o PDF (como imagen) usando OpenAI Vision API."""
         if not openai_client or OPENAI_API_KEY == "sk-your-key-here":
-            return {
-                "error": "OpenAI API Key not configured",
-                "status": "mock_required"
-            }
+            logger.warning("Vision API skip: No API Key or Demo Mode")
+            return {"error": "No API Key for Vision"}
 
         try:
-            with open(file_path, "rb") as image_file:
+            ext = file_path.split('.')[-1].lower()
+            temp_image_path = None
+
+            if ext == 'pdf':
+                # Convertir primera página de PDF a imagen temporal para análisis visual
+                logger.info(f"Converting PDF {file_path} to image for Vision analysis")
+                doc = fitz.open(file_path)
+                page = doc.load_page(0)
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2)) # Zoom 2x para mejor resolución
+                temp_image_path = file_path + ".temp.png"
+                pix.save(temp_image_path)
+                process_path = temp_image_path
+                doc.close()
+            else:
+                process_path = file_path
+
+            with open(process_path, "rb") as image_file:
                 base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+
+            # Eliminar temporal si existe
+            if temp_image_path and os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
 
             prompt = f"""Analiza esta imagen técnica para certificación EDGE (Medida: {hint_measure}).
             Extrae toda la información técnica relevante (Watts, Lumens, Eficiencia, Marca, Modelo, Flujo, etc.).
