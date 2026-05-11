@@ -16,3 +16,4 @@ jinja2
 bcrypt
 pyjwt
 passlib
+python-docx

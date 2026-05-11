@@ -1,5 +1,7 @@
 import json
-from app.core.config import MONGO_URL, DB_NAME, ROOT_DIR
+import os
+import logging
+from app.core.config import MONGO_URL, DB_NAME, ROOT_DIR, logger
 
 db = None
 client = None

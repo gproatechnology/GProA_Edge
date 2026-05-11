@@ -229,9 +229,9 @@ EDGE_WBS = {
     # ═══════════════ DESIGN ═══════════════
     "DESIGN": {
         "categoria": "DESIGN",
-        "nombre": "Diseno General / Areas",
-        "descripcion": "Planos arquitectonicos, areas y diseno general del proyecto",
-        "documentos_requeridos": ["plano", "memoria"],
+        "nombre": "Diseño General / Áreas",
+        "descripcion": "Planos arquitectónicos, áreas y diseño general del proyecto",
+        "documentos_requeridos": ["plano"], # Solo plano obligatorio para empezar
         "calculo": "calculo_areas",
         "campos_extraccion": ["area_total", "area_por_espacio", "numero_pisos"],
     },

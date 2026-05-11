@@ -10,33 +10,17 @@ from app.api.api_router import api_router
 
 app = FastAPI(title="EDGE Document Processor API v2")
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Include API Router
-app.include_router(api_router, prefix="/api")
-
-@app.on_event("startup")
-async def startup_event():
-    import asyncio
-    # from app.db.seed import seed_demo_data
-    # Desactivado para producción:
-    # asyncio.create_task(seed_demo_data())
-    pass
-
-origins = os.environ.get('CORS_ORIGINS', '*').split(',')
-allow_credentials = True
-if '*' in origins:
-    allow_credentials = False
-
-# Add CORS middleware
+# Setup CORS - Permisivo para desarrollo
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=allow_credentials,
-    allow_origins=origins,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API Router
+app.include_router(api_router, prefix="/api")
 
 # Setup Static Files
 # Render support: check for 'dist' (Vite) or 'build' (CRA)

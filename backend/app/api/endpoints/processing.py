@@ -52,7 +52,23 @@ async def process_edge_project(project_id: str):
             res = await process_single_file_pipeline(f, job_id)
             results.append(res)
         
-        # Registrar el job como completado para evitar 404 en el polling
+        # ACTUALIZAR MÉTRICAS DEL PROYECTO TRAS PROCESAMIENTO
+        try:
+            from app.services.edge_rules import validate_project_wbs, get_project_coverage
+            all_files = await udb.files_find({"project_id": project_id})
+            processed_files = [f for f in all_files if f.get("status") == "processed"]
+            if processed_files:
+                validate_project_wbs(processed_files)
+                coverage = get_project_coverage(processed_files)
+                await udb.projects_update_one({"id": project_id}, {"$set": {
+                    "efficiency": coverage["coverage_percent"],
+                    "processed_count": len(processed_files)
+                }})
+                logger.info(f"Métricas actualizadas para proyecto {project_id}: {coverage['coverage_percent']}%")
+        except Exception as e:
+            logger.error(f"Error actualizando métricas en modo demo: {e}")
+
+        # Registrar el job como completado
         processing_jobs[job_id] = {
             "project_id": project_id,
             "status": "completed",
@@ -74,7 +90,7 @@ async def process_edge_project(project_id: str):
         }
     # -----------------------------
 
-    # Actualizar métricas del proyecto inmediatamente para refrescar el dashboard
+    # Actualizar métricas iniciales (para archivos ya procesados antes de esta ejecución)
     from app.services.edge_rules import validate_project_wbs, get_project_coverage
     processed_files = [f for f in files if f.get("status") == "processed"]
     if processed_files:
