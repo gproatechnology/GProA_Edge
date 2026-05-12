@@ -46,13 +46,16 @@ function Test-Dependencies {
 
 function Get-ProcessByPort($port) {
     try {
-        # Intentar con Get-NetTCPConnection (mas moderno)
-        $conn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Sort-Object State | Select-Object -First 1
-        if ($conn -and $conn.OwningProcess) {
-            $procId = if ($conn.OwningProcess -is [array]) { $conn.OwningProcess[0] } else { $conn.OwningProcess }
-            $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($proc) {
-                return @{ PID = $procId; Name = $proc.ProcessName; Memory = [math]::Round($proc.WorkingSet64 / 1MB, 2) }
+        # Usar netstat que es mas confiable en todas las versiones de Windows
+        $netstat = netstat -ano | Select-String ":$port\s+.*LISTENING" | Select-Object -First 1
+        if ($netstat) {
+            $pidStr = ($netstat.ToString().Split(' ') | Where-Object { $_ -ne "" })[-1]
+            if ($pidStr -match '^\d+$') {
+                $procId = [int]$pidStr
+                $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($proc) {
+                    return @{ PID = $procId; Name = $proc.ProcessName; Memory = [math]::Round($proc.WorkingSet64 / 1MB, 2) }
+                }
             }
         }
     } catch { }
@@ -224,7 +227,7 @@ function Start-Backend {
     Write-Info "ReDoc    : http://localhost:$BACKEND_PORT/redoc"
     Write-Host ("-" * 60) -ForegroundColor Cyan
     # Lanzar proceso en ventana separada con titulo y color (0B = Cyan)
-    $arguments = '/k title GProA EDGE - BACKEND & color 0B & cd /d "' + $bd + '" & call venv\Scripts\activate.bat & uvicorn app.main:app --reload --port ' + $BACKEND_PORT
+    $arguments = '/k title GProA EDGE - BACKEND & color 0B & cd /d "' + $bd + '" & call venv\Scripts\activate.bat & uvicorn app.main:app --port ' + $BACKEND_PORT
     Start-Process -FilePath "cmd.exe" -ArgumentList $arguments -WindowStyle Normal
     Write-Success "Backend lanzado (log en $BACKEND_LOG)"
     return $true

@@ -22,7 +22,7 @@ const TABS = [
   { id: "status", label: "Resumen" },
 ];
 
-export default function ProjectDetail({ projectId, onProjectDeleted }) {
+export default function ProjectDetail({ projectId, user, onProjectDeleted }) {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [activeTab, setActiveTab] = useState("files");

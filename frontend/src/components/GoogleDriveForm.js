@@ -18,12 +18,42 @@ export default function GoogleDriveForm({ projectId, user, onComplete }) {
     checkStatus();
   }, [userId]);
 
+  // Auto-sync effect when connected
+  useEffect(() => {
+    if (status.connected && !syncing && files.length === 0) {
+      // If we are already connected, let's try to jump to the GProA Master Folder and sync
+      const masterFolderId = '1904H0WB7kpNC4sCP_m4hJD4zg6ixbfCQ';
+      autoSync(masterFolderId);
+    }
+  }, [status.connected]);
+
+  const autoSync = async (folderId) => {
+    setSyncing(true);
+    try {
+      toast.info("Autosincronización en curso...");
+      const res = await axios.post(`${API}/google-drive/sync/${projectId}?user_id=${userId}&folder_id=${folderId}`);
+      toast.success("¡Sincronización automática completada!");
+      if (onComplete) {
+        // Use a small timeout to let the success toast be seen
+        setTimeout(() => {
+          onComplete();
+        }, 1500);
+      }
+    } catch (e) {
+      console.error("Auto-sync failed:", e);
+      fetchFiles();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const checkStatus = async () => {
     try {
       const res = await axios.get(`${API}/google-drive/status/${userId}`);
       setStatus(res.data);
-      if (res.data.connected) {
-        fetchFiles();
+      if (res.data.connected && !syncing) {
+        // If already connected and not syncing, trigger auto-sync and eventually close
+        autoSync(res.data.root_folder_id || '1904H0WB7kpNC4sCP_m4hJD4zg6ixbfCQ');
       }
     } catch (e) {
       console.error("Error checking drive status:", e);
@@ -50,28 +80,40 @@ export default function GoogleDriveForm({ projectId, user, onComplete }) {
     setConnecting(true);
     try {
       localStorage.setItem("google_auth_user_id", userId);
-      const redirectUri = `${window.location.origin}/google-callback`;
+      // Use localhost explicitly if on a private IP to avoid Google's "device_id required" error
+      const origin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? window.location.origin 
+        : 'http://localhost:3000';
+      
+      const redirectUri = `${origin}/google-callback`;
       const res = await axios.get(`${API}/google-drive/auth-url?user_id=${userId}&redirect_uri=${encodeURIComponent(redirectUri)}`);
       
       const authWindow = window.open(res.data.auth_url, "Connect Google Drive", "width=600,height=700");
       
-      // Poll for window closure or success message
-      const checkWindow = setInterval(async () => {
-        if (authWindow.closed) {
-          clearInterval(checkWindow);
-          setConnecting(false);
-          checkStatus();
-        }
-      }, 1000);
+      // Fallback: Poll status every 2 seconds until connected
+      const pollInterval = setInterval(() => {
+        checkStatus();
+      }, 2000);
 
-      // Listen for postMessage from the callback page
-      window.addEventListener("message", async (event) => {
+      const handleAuthMessage = (event) => {
+        // More permissive origin check for local development
         if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
-          authWindow.close();
+          setConnecting(false);
           toast.success("¡Cuenta conectada correctamente!");
           checkStatus();
+          clearInterval(pollInterval);
+          window.removeEventListener("message", handleAuthMessage);
         }
-      }, { once: true });
+      };
+
+      window.addEventListener("message", handleAuthMessage);
+      
+      // Safety cleanup
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        setConnecting(false);
+        window.removeEventListener("message", handleAuthMessage);
+      }, 180000); // 3 minutes
 
     } catch (e) {
       toast.error("Error al iniciar la conexión");

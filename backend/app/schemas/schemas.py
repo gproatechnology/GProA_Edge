@@ -17,6 +17,8 @@ class ProjectResponse(BaseModel):
     square_meters: Optional[float] = None
     annual_consumption_kwh: Optional[float] = None
     efficiency: Optional[float] = None
+    co2_reduction: Optional[float] = 0.0
+    energy_savings: Optional[float] = 0.0
 
 class FileResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")

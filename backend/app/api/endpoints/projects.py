@@ -42,6 +42,8 @@ async def list_projects():
 
         p["file_count"] = file_count
         p["processed_count"] = processed_count
+        p["co2_reduction"] = p.get("co2_reduction", 0.0)
+        p["energy_savings"] = p.get("energy_savings", 0.0)
         result.append(ProjectResponse(**p))
     return result
 
@@ -64,6 +66,8 @@ async def get_project(project_id: str):
 
     project["file_count"] = file_count
     project["processed_count"] = processed_count
+    project["co2_reduction"] = project.get("co2_reduction", 0.0)
+    project["energy_savings"] = project.get("energy_savings", 0.0)
     return ProjectResponse(**project)
 
 @router.delete("/{project_id}")

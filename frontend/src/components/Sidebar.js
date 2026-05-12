@@ -37,8 +37,14 @@ export default function Sidebar({ projects, onNavigate, stats, user }) {
   const handleLogout = () => {
     localStorage.removeItem("gproa_session");
     localStorage.removeItem("gproa_user");
+    localStorage.removeItem("gproa_chat_name");
     window.location.href = "/";
   };
+
+  // Debugging user prop
+  useEffect(() => {
+    console.log("SIDEBAR USER DATA:", user);
+  }, [user]);
 
   return (
     <aside
@@ -168,10 +174,10 @@ export default function Sidebar({ projects, onNavigate, stats, user }) {
           className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all ${showUserMenu ? 'bg-muted ring-1 ring-border' : 'hover:bg-muted/50'}`}
         >
           <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-primary/10 flex items-center justify-center shadow-sm">
-            {user?.image ? (
+            {user?.image && !user.image.includes("avatar_luis") ? (
               <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-primary font-bold text-xs">{user?.avatar || "U"}</span>
+              <span className="text-primary font-bold text-xs">{user?.avatar || (user?.name ? user.name.charAt(0) : "G")}</span>
             )}
           </div>
           <div className="flex-1 min-w-0 text-left">

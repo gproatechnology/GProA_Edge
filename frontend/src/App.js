@@ -78,7 +78,6 @@ function AppLayout({ user }) {
             path="/projects/:projectId"
             element={<ProjectDetailWrapper onProjectDeleted={fetchProjects} user={user} />}
           />
-          <Route path="/google-callback" element={<GoogleCallback />} />
         </Routes>
       </main>
     </div>
@@ -123,21 +122,25 @@ function MainApp() {
   const handleLogout = () => {
     localStorage.removeItem("gproa_session");
     localStorage.removeItem("gproa_user");
+    localStorage.removeItem("gproa_chat_name");
     setUser(null);
+    window.location.href = "/";
   };
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
-  if (!user) {
-    return <Login onLogin={handleLogin} />;
-  }
-
   return (
     <>
       <Toaster position="top-right" richColors closeButton />
-      <AppLayout user={user} />
+      <Routes>
+        <Route path="/google-callback" element={<GoogleCallback />} />
+        <Route 
+          path="/*" 
+          element={!user ? <Login onLogin={handleLogin} /> : <AppLayout user={user} onLogout={handleLogout} />} 
+        />
+      </Routes>
     </>
   );
 }

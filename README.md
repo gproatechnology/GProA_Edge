@@ -1,194 +1,233 @@
-# EDGE Document Processor
+# GProA EDGE — Plataforma de Certificación Inteligente
 
 [![Tests](https://github.com/gproatechnology/GProA_Edge/workflows/CI/badge.svg)](https://github.com/gproatechnology/GProA_Edge/actions)
-[![Backend Tests](https://img.shields.io/badge/Backend-100%25-brightgreen.svg)]()
-[![Frontend Tests](https://img.shields.io/badge/Frontend-95%25-brightgreen.svg)]()
+[![Backend](https://img.shields.io/badge/Backend-100%25-brightgreen.svg)]()
+[![Frontend](https://img.shields.io/badge/Frontend-95%25-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)]()
 
-## 🚀 AI-Powered Document Intelligence for EDGE Certification
+> **Outcome**: Reducción del tiempo de documentación para certificación EDGE en hasta **80%**, con mayor confiabilidad de auditoría y velocidad de cumplimiento.
 
-> **Outcome**: Reduce certification documentation time by up to **80%** while increasing audit reliability and compliance speed.
-
-**EDGE Document Processor** is a professional-grade platform designed to streamline the complex documentation required for EDGE certification. It acts as an **intelligent document engine** that transforms unstructured construction data into structured, auditable certification inputs.
-
-- **Intelligent Classification**: Automatically categorizes documents into EDGE categories (ENERGY, WATER, MATERIALS).
-- **Assisted Data Extraction**: High-precision extraction of technical parameters (watts, lumens, U-values, brands/models).
-- **AI-Assisted Area Estimation**: Interactive tools to assist in spatial data extraction from floor plans, ensuring user-verifiable results (not a final authority).
-- **Compliance Validation**: Real-time detection of missing documentation per measure.
-- **Auditable Exports**: Structured Excel outputs ready for certification submission.
+**GProA EDGE** es una plataforma profesional que transforma datos de construcción no estructurados en entradas de certificación estructuradas y auditables. Combina inteligencia artificial, integración con Google Drive y un dashboard ejecutivo en tiempo real para equipos de consultoría de edificios verdes.
 
 ---
 
-## ✨ Features
-- 📋 **Project Governance**: Centralized management of certification projects and typologies.
-- 📂 **Multi-Source Pipeline**: Upload and process various file types (PDF, Images, Excel).
-- 🧠 **Context-Aware Processing**: GPT-4o powered classification and technical extraction.
-- ⚖️ **Confidence & Traceability**: Integrated confidence scoring per extraction and source referencing.
-- 📊 **Executive Dashboard**: Real-time monitoring of project status, documentation gaps, and EDGE metrics.
-- 🎨 **Premium UI**: Modern, responsive interface built with React 19, Tailwind, and Shadcn UI.
-- 📤 **Enterprise Export**: Advanced Excel generation with detailed data sheets.
-- ⚡ **AI Toolset**: Integrated "Prompts" for classification (ConsultorÍA) and area calculation (Areas & Loads).
+## ✨ Funcionalidades Principales
+
+- 📋 **Gestión de Proyectos**: Administración centralizada de proyectos y tipologías de certificación.
+- 🧠 **Procesamiento con IA**: Clasificación y extracción técnica con GPT-4o (Watts, Lúmenes, COP, marcas/modelos).
+- 🔗 **Sincronización con Google Drive**: Descarga automática de archivos desde carpetas del Drive del usuario.
+- 🤖 **Motor de Auditoría Automática**: Al sincronizar, cada archivo es clasificado, parseado y analizado sin intervención manual.
+- 📊 **Dashboard en Tiempo Real**: KPIs de CO2, archivos procesados y eficiencia energética actualizados automáticamente.
+- 🔐 **SSO con Google**: Autenticación con cuenta de Google, detección automática de rol (CEO / Consultor).
+- 🎨 **Identidad de Marca Premium**: Logo Cloud animado en login, branding EOSIS y EDGE integrado.
+- 📤 **Exportación Enterprise**: Generación de Excel estructurado listo para entrega a certificadores.
+- 💬 **Asistente IA Contextual**: Chat integrado que conoce el estado real de cada proyecto.
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Stack Tecnológico
+
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite)
 ![MongoDB](https://img.shields.io/badge/MongoDB-4DB33D?style=for-the-badge&logo=mongodb)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![GPT-4o](https://img.shields.io/badge/OpenAI-GPT--4o-orange?style=for-the-badge&logo=openai)
+![Google Drive](https://img.shields.io/badge/Google_Drive-4285F4?style=for-the-badge&logo=googledrive)
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Arquitectura del Sistema
 
 ```mermaid
 graph TB
     FE[React Frontend] -->|REST API| API[FastAPI Server]
-    API -->|Persist| DB[MongoDB / SQLite]
-    API -->|Classify/Extract/Validate| LLM[GPT-4o]
-    LLM -->|JSON| API
+    GD[Google Drive] -->|OAuth2 SSO| API
+    API -->|Sync + Audit| AS[AuditService]
+    AS -->|Parse| PA[PDF / CAD / Excel Parsers]
+    AS -->|AI Analysis| LLM[GPT-4o EdgeProcessors]
+    AS -->|Persist Metrics| DB[(SQLite / MongoDB)]
     DB -->|Query| API
-    API -->|Data/Status/Export| FE
+    API -->|CO2, Files, Efficiency| FE
 ```
 
 ---
 
-## 🔄 Document Processing Flow
+## 🔄 Flujo de Datos: Drive → Dashboard
 
 ```mermaid
 flowchart TD
-    A[File Upload] --> B[Text/Image Extraction]
-    B --> C[AI Classify<br/>Category + Measure]
-    C --> D[AI Extract<br/>Technical Parameters]
-    D --> E{doc_type == 'blueprint' ?}
-    E -->|Yes| F[AI-Assisted<br/>Area Estimation]
-    E -->|No| G[Validation Layer<br/>Confidence + Gaps]
-    F --> G
-    G --> H[Persistence<br/>MongoDB / SQLite]
-    H --> I[Audit Ready Dashboard<br/>+ Excel Export]
+    A[Usuario sincroniza carpeta de Google Drive] --> B[GoogleDriveService descarga archivos]
+    B --> C[Registro en Base de Datos con estado 'pending']
+    C --> D[AuditService detecta medida EDGE por nombre de archivo]
+    D --> E{Tipo de archivo}
+    E -->|PDF| F[PDF Parser extrae texto]
+    E -->|DXF/DWG| G[CAD Parser extrae geometría]
+    E -->|XLSX| H[Excel Parser extrae tablas]
+    F & G & H --> I[EdgeProcessor analiza con GPT-4o]
+    I --> J[Actualiza DB: watts, lumens, COP, áreas]
+    J --> K[Recalcula métricas del proyecto: CO2, eficiencia]
+    K --> L[Dashboard se actualiza en tiempo real]
 
     classDef startEnd fill:#e1f5fe,stroke:#01579b
     classDef ai fill:#fff3e0,stroke:#e65100
     classDef db fill:#f3e5f5,stroke:#4a148c
-    class A,I startEnd
-    class C,D,F,G ai
-    class H db
+    class A,L startEnd
+    class I,D ai
+    class J,K db
 ```
 
 ---
 
-## 🛡️ Trust & Reliability Layer (Auditor Ready)
+## 🔐 Autenticación SSO
 
-Unlike generic extraction tools, this processor is built for the high-stakes environment of green building certification:
-
-- **Confidence Scoring**: Every extracted value is accompanied by an AI-generated confidence score (0-1). Low-confidence values are flagged for human review.
-- **Initial Traceability**: Every data point is directly linked to its source document, ensuring a clear audit trail from the start.
-- **Human-in-the-Loop Validation**: Built-in workflow for human verification, ensuring that AI-driven insights are always validated by experts before final submission.
-- **Hybrid Validation**: Combines Large Language Models with deterministic business rules for EDGE measures.
+- **OAuth2 con Google**: Flujo completo con scopes `drive.readonly`, `userinfo.profile`, `userinfo.email`, `openid`.
+- **Detección de Rol Automática**: Si el email contiene `gproatechnology` → rol **CEO** con permisos de administrador. Otros emails → rol **Consultant**.
+- **Limpieza de Sesión**: `localStorage.clear()` en logout garantiza que no persistan datos de sesión anteriores.
+- **Fallback de Avatar**: Si Google no entrega foto de perfil, se muestra una inicial dinámica basada en el nombre real del usuario.
 
 ---
 
-## 🎯 Screenshots
-![Dashboard](./screenshots/dashboard.png)
-![File Upload](./screenshots/upload.png)
-![EDGE Status](./screenshots/status.png)
-*(Run locally to generate screenshots)*
+## 📊 Métricas del Dashboard (Tiempo Real)
+
+| Métrica | Fuente |
+|---|---|
+| **Total Proyectos** | Conteo real de la base de datos |
+| **Archivos Totales** | `files_count_documents()` por proyecto |
+| **Archivos Procesados** | Archivos con `status = 'processed'` |
+| **Reducción CO2** | Calculado por `AuditService.recalculate_project_metrics()` |
+| **Eficiencia Energética** | Promedio de ahorros EEM detectados |
 
 ---
 
-## 🚀 Quick Start
+## 🤖 Motor de Auditoría (AuditService)
 
-### Prerequisites
-- **Docker Desktop** (Windows/Mac) or **Docker + Docker Compose** (Linux)
-- **Node 18+** (optional, for frontend dev without Docker)
-- **Python 3.12+** (optional, for backend dev without Docker)
+Nuevo servicio en `backend/app/services/audit_service.py` que orquesta:
+
+1. **Detección de Medida**: Identifica EEM22, EEM09, WEM01, WEM02, EEM16 por nombre de archivo.
+2. **Parseo**: PDF, CAD o Excel según extensión.
+3. **Procesamiento Especializado**: Llama al `EdgeProcessor` correcto (luminarias, HVAC, agua, renovables).
+4. **Persistencia**: Actualiza el registro del archivo con `watts`, `lumens`, `specialized_data`.
+5. **Recalculo de Proyecto**: Agrega métricas de CO2 y eficiencia al proyecto padre.
 
 ---
 
-## 🐳 **Option 1: Docker Compose (Recommended)**
+## 🎨 Identidad Visual (v2.0)
 
-La forma más fácil de iniciar todo el stack (backend + frontend) con un solo comando.
+- **Login Screen**: Fondo animado con "Logo Cloud" — múltiples logos de EOSIS y EDGE flotando con efectos de paralaje y opacidades dinámicas.
+- **Sidebar**: Avatar dinámico con foto de perfil de Google o inicial corporativa como respaldo.
+- **Branding**: Paleta de colores unificada entre GProA, EOSIS y EDGE.
 
-### **Desarrollo (Hot-Reload)**
-```bash
-# 1. Clona el repo y checkout a submain
-git clone https://github.com/gproatechnology/GProA_EOSIS_Edge.git
-cd GProA_EOSIS_Edge
-git checkout submain
+---
 
-# 2. Inicia todos los servicios
-docker-compose up
+## 🚀 Despliegue Local
+
+### Prerequisitos
+- Python 3.12+
+- Node 18+
+- Cuenta de Google con acceso a `credentials.json` de OAuth2
+
+### Inicio Rápido (Windows)
+```powershell
+# Desde la carpeta docs/
+.\GProA_EDGE_Launcher.ps1
+
+# Opciones del Launcher:
+# [2] Iniciar Backend + Frontend
+# [6] Reiniciar Backend (después de cambios en Python)
+```
+
+### Estructura de Archivos
+```
+GProA_EOSIS_Edge/
+├── backend/
+│   ├── app/
+│   │   ├── api/endpoints/      # projects, files, google_drive, analysis
+│   │   ├── services/
+│   │   │   ├── audit_service.py        # NUEVO: Motor de auditoría automática
+│   │   │   ├── google_drive_service.py # Sync + disparo de auditoría
+│   │   │   ├── edge_processors.py      # EEM22, EEM09, WEM, EEM16
+│   │   │   └── parsers/                # PDF, CAD, Excel, Image
+│   │   ├── db/database.py      # SQLite + MongoDB unificado
+│   │   └── schemas/schemas.py  # Modelos con co2_reduction, energy_savings
+│   └── data/
+│       ├── credentials.json    # OAuth2 de Google (no incluido en repo)
+│       └── gproa.db            # Base de datos SQLite local
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── Login.js        # SSO Google + Logo Cloud animado
+│       │   ├── Sidebar.js      # Avatar dinámico de Google
+│       │   └── ChatAssistant.js # Saludo personalizado por rol
+│       └── App.js
+├── docs/
+│   ├── GProA_EDGE_Launcher.ps1 # Launcher interactivo de Windows
+│   └── LOCAL_DEPLOYMENT.md
+└── README.md
 ```
 
 ---
 
-## 🧪 Demo Mode vs 🏭 Production Mode
+## 🗺️ Roadmap
 
-| Feature | **Demo Mode** (Default) | **Production Mode** |
-|---------|-------------------------|---------------------|
-| **Database** | SQLite (Local/Ephemeral) | MongoDB Atlas (Cloud/Persistent) |
-| **AI Engine** | Mock AI (Hardcoded logic) | OpenAI GPT-4o (Real-time Analysis) |
-| **Cost** | $0 (No API Keys needed) | Pay-per-token (OpenAI API Key) |
-| **Accuracy** | Simulation only | Real Document Processing |
-| **Use Case** | UX Review & Feature Demos | Real Project Certification |
+### ✅ v2.0 — Completado (Mayo 2026)
+- [x] SSO con Google OAuth2 (Drive + Profile)
+- [x] Sincronización automática de archivos desde Google Drive
+- [x] Motor de Auditoría Automática (`AuditService`)
+- [x] Dashboard con métricas reales (CO2, archivos, eficiencia)
+- [x] Identidad de marca premium (Logo Cloud, avatar dinámico)
+- [x] Detección de rol CEO / Consultor por email
+- [x] Chat Asistente con contexto real del proyecto
 
----
+### 🔜 v2.1 — Próximos Pasos
+- [ ] Validación de imagen de perfil de Google en Sidebar
+- [ ] Procesamiento en background (Celery / asyncio tasks)
+- [ ] Panel de auditoría detallado por medida EDGE
+- [ ] Exportación a formato EDGE App (.xlsx certificador)
+- [ ] RBAC completo (Admin, Auditor, Consultor, Cliente)
 
-### 🔧 **Advanced: Production Mode (with MongoDB + OpenAI)**
-
-For real AI processing and cloud database:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `MONGO_URL` | MongoDB Atlas connection string | ✅ Yes |
-| `OPENAI_API_KEY` | OpenAI API key (GPT-4o) | ✅ Yes |
-| `DEMO_MODE` | Set to `false` | No |
-| `CORS_ORIGINS` | Allowed origins (e.g., `https://yourdomain.com`) | ✅ Yes |
-| `GOOGLE_DRIVE_CREDENTIALS` | Service Account JSON (Placeholder for future sync) | ⏳ Optional |
-
-Setup guide: **[ENV_SETUP.md](docs/ENV_SETUP.md)**.
+### 🏢 v3.0 — Enterprise
+- [ ] Multi-tenant con aislamiento de datos por organización
+- [ ] Integración Computer Vision para CAD determinístico
+- [ ] API pública para integraciones ERP / BIM
+- [ ] SharePoint Sync
 
 ---
 
-## 🗺️ Roadmap (Enterprise Readiness)
-### 🚀 Phase 2 (P1: Professionalization)
-- **Visual Traceability**: Highlight extracted data directly on PDF source pages for instant verification.
-- **Enhanced OCR**: Advanced pre-processing for low-quality PDF scans and handwritten notes.
-- **Google Drive / Sharepoint**: Direct synchronization to eliminate manual upload limits. [IN PROGRESS]
-- **Progress Tracking**: Real-time progress bars for batch document processing.
+## 🧪 Modos de Operación
 
-### 🏢 Phase 3 (P2: Enterprise & Security)
-- **RBAC Security**: Role-Based Access Control (Admin, Auditor, Consultant).
-- **Multi-Tenant Architecture**: Complete data isolation for different client organizations.
-- **Advanced CV Integration**: Computer Vision for deterministic area calculation from CAD/PDF.
-- **API for Integrations**: Connect with existing ERP or Project Management tools.
+| Feature | **Demo** (Default) | **Producción** |
+|---|---|---|
+| **Base de datos** | SQLite local | MongoDB Atlas |
+| **Motor IA** | Mock data | OpenAI GPT-4o |
+| **Google Drive** | Sin sync | Sync completo OAuth2 |
+| **Costo** | $0 | Por token OpenAI |
 
 ---
 
-## 📁 Project Structure
-```
-GProA_Edge/
-├── backend/          # FastAPI + MongoDB + GPT-4o
-├── frontend/         # React + Tailwind + Shadcn UI
-├── docs/             # Technical documentation & guides
-├── memory/PRD.md     # Product Requirements
-└── README.md         # This file
-```
+## 📄 Variables de Entorno
+
+| Variable | Descripción | Requerido |
+|---|---|---|
+| `OPENAI_API_KEY` | Clave API de OpenAI (GPT-4o) | Para IA real |
+| `MONGO_URL` | Connection string MongoDB Atlas | Para prod |
+| `GOOGLE_OAUTH_CLIENT_ID` | Client ID de Google Cloud Console | Para SSO |
+| `CORS_ORIGINS` | Orígenes permitidos | En producción |
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contribución
 1. Fork & clone
-2. Create feature branch
-3. PR to `main`
+2. Branch desde `submain`
+3. PR a `submain` → revisión → merge a `main`
 
-## 📄 License
-MIT
+## 📄 Licencia
+MIT — GProA Technology © 2026
 
-## 🙏 Acknowledgments
-- [EDGE Certification](https://edgebuildings.com/)
-- [Emergent Integrations](https://emergent.sh)
-- [Shadcn UI](https://ui.shadcn.com/)
+## 🙏 Créditos
+- [EDGE Buildings](https://edgebuildings.com/) — Estándar de certificación
+- [IFC EDGE](https://ifc.org/our-work/edge/) — Software oficial de certificación
+- [Google Cloud](https://cloud.google.com/) — OAuth2 & Drive API
+- [OpenAI](https://openai.com/) — GPT-4o
 
 ---
-⭐ Star us on GitHub!
+⭐ ¡Dale una estrella en GitHub si este proyecto te es útil!

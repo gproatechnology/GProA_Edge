@@ -51,7 +51,15 @@ class UnifiedDB:
             """)
             # Migracion automatica para bases de datos existentes
             # Projects
-            for col, col_type in [("priority", "TEXT"), ("square_meters", "REAL"), ("annual_consumption_kwh", "REAL"), ("efficiency", "REAL")]:
+            new_cols = [
+                ("priority", "TEXT"), 
+                ("square_meters", "REAL"), 
+                ("annual_consumption_kwh", "REAL"), 
+                ("efficiency", "REAL"),
+                ("co2_reduction", "REAL"),
+                ("energy_savings", "REAL")
+            ]
+            for col, col_type in new_cols:
                 try:
                     await self.conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {col_type}")
                 except:
@@ -90,13 +98,16 @@ class UnifiedDB:
         else:
             await self._ensure_sqlite()
             await self.conn.execute("""
-                INSERT INTO projects (id, name, typology, created_at, file_count, processed_count, priority, square_meters, annual_consumption_kwh, efficiency)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO projects (
+                    id, name, typology, created_at, file_count, processed_count, 
+                    priority, square_meters, annual_consumption_kwh, efficiency,
+                    co2_reduction, energy_savings
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 doc["id"], doc["name"], doc["typology"], doc["created_at"],
                 doc.get("file_count", 0), doc.get("processed_count", 0),
                 doc.get("priority"), doc.get("square_meters"), doc.get("annual_consumption_kwh"),
-                doc.get("efficiency")
+                doc.get("efficiency"), doc.get("co2_reduction", 0.0), doc.get("energy_savings", 0.0)
             ))
             await self.conn.commit()
 
@@ -106,7 +117,11 @@ class UnifiedDB:
             return await db.projects.find_one(query, proj)
         else:
             await self._ensure_sqlite()
-            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh", "efficiency"]
+            columns = [
+                "id", "name", "typology", "created_at", "file_count", "processed_count", 
+                "priority", "square_meters", "annual_consumption_kwh", "efficiency",
+                "co2_reduction", "energy_savings"
+            ]
             where = [f"{k}=?" for k in query.keys()]
             params = list(query.values())
             sql = f"SELECT {', '.join(columns)} FROM projects WHERE {' AND '.join(where)}"
@@ -121,7 +136,11 @@ class UnifiedDB:
             return await cursor.to_list(100)
         else:
             await self._ensure_sqlite()
-            columns = ["id", "name", "typology", "created_at", "file_count", "processed_count", "priority", "square_meters", "annual_consumption_kwh", "efficiency"]
+            columns = [
+                "id", "name", "typology", "created_at", "file_count", "processed_count", 
+                "priority", "square_meters", "annual_consumption_kwh", "efficiency",
+                "co2_reduction", "energy_savings"
+            ]
             sql = f"SELECT {', '.join(columns)} FROM projects"
             params = []
             if query:

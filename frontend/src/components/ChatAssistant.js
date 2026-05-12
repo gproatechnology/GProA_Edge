@@ -8,9 +8,10 @@ export default function ChatAssistant({ projectId, user }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState("");
-  const [history, setHistory] = useState([
-    { role: "assistant", content: "¡Hola! Soy tu asistente experto de GProA EDGE. ¿En qué puedo ayudarte con este proyecto?" }
-  ]);
+  const [userName, setUserName] = useState(() => {
+    return user?.name || localStorage.getItem("gproa_chat_name") || "";
+  });
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDriveForm, setShowDriveForm] = useState(false);
   const scrollRef = useRef(null);
@@ -21,6 +22,21 @@ export default function ChatAssistant({ projectId, user }) {
     }
   }, [history]);
 
+  useEffect(() => {
+    if (!userName && history.length === 0) {
+      setHistory([{ 
+        role: "assistant", 
+        content: `👋 ¡Bienvenido, líder de **GProA**! Es un honor colaborar contigo en la supervisión de los proyectos de EOSIS. ¿Cómo te gustaría que te llame en esta sesión de trabajo?` 
+      }]);
+    } else if (userName && history.length === 0) {
+      const greeting = user?.role === "CEO" 
+        ? `¡Es un honor tenerlo de vuelta, **CEO**! El sistema está listo para supervisar los avances. Luis y Jorge tienen todo bajo control, ¿qué desea revisar hoy?`
+        : `¡Un gusto verte de nuevo, **${userName}**! Estoy lista para que sigamos impulsando este proyecto junto con Luis y Jorge. ¿En qué podemos avanzar hoy?`;
+        
+      setHistory([{ role: "assistant", content: greeting }]);
+    }
+  }, [userName, user]);
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!message.trim() || loading) return;
@@ -29,10 +45,21 @@ export default function ChatAssistant({ projectId, user }) {
     setHistory(prev => [...prev, userMsg]);
     setMessage("");
 
+    // If we don't have a name yet, the first message is the name
+    if (!userName) {
+      setUserName(message);
+      localStorage.setItem("gproa_chat_name", message);
+      setHistory(prev => [...prev, { 
+        role: "assistant", 
+        content: `¡Excelente, **${message}**! Es un honor trabajar contigo. Ahora que somos equipo, dime: ¿Deseas que conectemos tu cuenta de Google Drive para traer los planos de Luis o prefieres que revisemos las métricas actuales del proyecto?` 
+      }]);
+      return;
+    }
+
     // Magic Word Check
     if (message.toLowerCase().trim() === "google drive") {
       setShowDriveForm(true);
-      setHistory(prev => [...prev, { role: "assistant", content: "¡Excelente! He activado el módulo de conexión con Google Drive. Por favor, completa la configuración a continuación:" }]);
+      setHistory(prev => [...prev, { role: "assistant", content: `¡Perfecto **${userName}**! He activado el módulo de conexión con Google Drive. Vamos a traer esos archivos para que Luis y yo podamos empezar el análisis.` }]);
       return;
     }
 
@@ -110,6 +137,7 @@ export default function ChatAssistant({ projectId, user }) {
                   <span className="text-xs text-muted-foreground">Pensando...</span>
                 </div>
               </div>
+            )}
             {showDriveForm && (
               <div className="flex justify-start">
                 <div className="bg-card border border-primary/20 p-4 rounded-2xl rounded-tl-none shadow-xl w-full max-w-[95%]">
@@ -121,7 +149,17 @@ export default function ChatAssistant({ projectId, user }) {
                       <X weight="bold" className="w-3 h-3" />
                     </button>
                   </div>
-                  <GoogleDriveForm projectId={projectId} user={user} onComplete={() => setShowDriveForm(false)} />
+                  <GoogleDriveForm 
+                    projectId={projectId} 
+                    user={user} 
+                    onComplete={() => {
+                      setShowDriveForm(false);
+                      setHistory(prev => [...prev, {
+                        role: "assistant",
+                        content: "✅ **Sincronización Exitosa.**\n\nHe importado correctamente la estructura de carpetas. Los archivos están siendo procesados en el motor de auditoría EDGE.\n\n¿Deseas que genere el reporte preliminar de **Eficiencia Lumínica (EEM22)** basado en los cuadros de carga detectados?"
+                      }]);
+                    }} 
+                  />
                 </div>
               </div>
             )}

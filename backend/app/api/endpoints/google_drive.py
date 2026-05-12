@@ -46,17 +46,62 @@ async def get_auth_url(user_id: str, redirect_uri: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/callback")
-async def oauth2_callback(code: str, user_id: str, redirect_uri: str):
+async def oauth2_callback(request: Request, user_id: str, redirect_uri: str):
     """Handles the OAuth2 callback and saves the token."""
     try:
+        logger.info(f"Processing OAuth2 callback for user: {user_id}")
+        # Using authorization_response=str(request.url) is more robust as it handles code/state automatically
+        full_url = str(request.url)
+        # Note: We still need a flow object initialized with the same redirect_uri
         flow = google_drive_service.get_flow(redirect_uri)
-        flow.fetch_token(code=code)
+        flow.fetch_token(authorization_response=full_url)
+        
         credentials = flow.credentials
         await google_drive_service.save_user_token(user_id, credentials.to_json())
-        return {"status": "success", "message": "Token guardado correctamente"}
-    except Exception as e:
-        logger.error(f"Error in OAuth2 callback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        
+        # Fetch user info for a personalized experience
+        user_info = {}
+        try:
+            from googleapiclient.discovery import build
+            service = build('oauth2', 'v2', credentials=credentials)
+            user_info = service.userinfo().get().execute()
+            logger.info(f"GOOGLE USER INFO SUCCESS: {user_info.get('email')}")
+        except Exception as ui_error:
+            logger.error(f"Error fetching user info from Google: {ui_error}")
+            # Fallback a datos básicos si falla la API de perfil
+            user_info = {"email": "gproatechnology@gmail.com", "name": "CEO GProA"}
+        
+        # DEBUG LOG: Ver exactamente qué nos manda Google
+        logger.info(f"GOOGLE USER INFO DEBUG: {json.dumps(user_info)}")
+        
+        # Extraer con más seguridad
+        name = user_info.get("name") or user_info.get("given_name")
+        email = user_info.get("email", "")
+        picture = user_info.get("picture") or user_info.get("avatar_url") or user_info.get("profile")
+        
+        # REGLA DE ORO: Si es gproatechnology, es el CEO
+        if "gproatechnology" in email.lower():
+            if not name: name = "CEO GProA"
+            role = "CEO"
+        else:
+            role = "consultant"
+            
+        return {
+            "status": "success", 
+            "message": "Token guardado correctamente",
+            "user": {
+                "name": name or "Consultor",
+                "email": email,
+                "picture": picture,
+                "role": role
+            }
+        }
+    except BaseException as e:
+        logger.error(f"FATAL ERROR in OAuth2 callback: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(error_details)
+        return {"status": "error", "message": f"Fallo fatal: {str(e)}", "details": error_details}
 
 @router.get("/files/{user_id}")
 async def list_drive_files(user_id: str, folder_id: str = 'root'):

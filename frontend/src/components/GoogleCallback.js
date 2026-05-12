@@ -15,14 +15,25 @@ export default function GoogleCallback() {
         try {
           // Get user_id from the state or local storage if we passed it
           const userId = localStorage.getItem("google_auth_user_id");
-          const redirectUri = `${window.location.origin}/google-callback`;
+          const origin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? window.location.origin 
+            : 'http://localhost:3000';
+          const redirectUri = `${origin}/google-callback`;
           
-          await axios.get(`${API}/google-drive/callback?code=${code}&user_id=${userId}&redirect_uri=${encodeURIComponent(redirectUri)}`);
+          const res = await axios.get(`${API}/google-drive/callback?code=${code}&state=${state}&user_id=${userId}&redirect_uri=${encodeURIComponent(redirectUri)}`);
           
-          // Notify the opener window
+          // Notify the opener window using a more permissive origin for dev
           if (window.opener) {
-            window.opener.postMessage({ type: "GOOGLE_AUTH_SUCCESS" }, window.location.origin);
+            window.opener.postMessage({ 
+              type: "GOOGLE_AUTH_SUCCESS",
+              user: res.data.user
+            }, "*");
           }
+          
+          // Explicitly close the window from within
+          setTimeout(() => {
+            window.close();
+          }, 500);
         } catch (e) {
           console.error("Error in callback processing:", e);
         }
