@@ -173,16 +173,28 @@ export default function Sidebar({ projects, onNavigate, stats, user }) {
           onClick={() => setShowUserMenu(!showUserMenu)}
           className={`w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all ${showUserMenu ? 'bg-muted ring-1 ring-border' : 'hover:bg-muted/50'}`}
         >
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-primary/10 flex items-center justify-center shadow-sm">
-            {user?.image && !user.image.includes("avatar_luis") ? (
-              <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-primary font-bold text-xs">{user?.avatar || (user?.name ? user.name.charAt(0) : "G")}</span>
-            )}
+          {/* Avatar: Google photo or styled initial */}
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-primary/10 flex items-center justify-center shadow-sm flex-shrink-0">
+            {user?.image && user.image.startsWith("http") ? (
+              <img 
+                src={user.image} 
+                alt={user.name} 
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            <span 
+              className="text-primary font-bold text-xs"
+              style={{ display: user?.image && user.image.startsWith("http") ? 'none' : 'flex' }}
+            >
+              {user?.name ? user.name.charAt(0).toUpperCase() : "G"}
+            </span>
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-bold truncate">{user?.name || "Usuario"}</p>
-            <p className="text-[10px] text-muted-foreground capitalize leading-none mt-0.5">{user?.role || "Invitado"}</p>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5 truncate">
+              {user?.email || user?.role || "Invitado"}
+            </p>
           </div>
           <div className={`transition-transform duration-300 ${showUserMenu ? 'rotate-180' : ''}`}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-muted-foreground">

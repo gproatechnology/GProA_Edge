@@ -15,38 +15,33 @@ export default function Login({ onLogin }) {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    // Limpieza de seguridad para asegurar que no hay datos viejos (como el nombre "CEO")
     localStorage.removeItem("gproa_chat_name");
     localStorage.removeItem("gproa_user");
     
     try {
-      // Usar localhost explícitamente para evitar problemas de IP privada con Google
-      const origin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? window.location.origin 
-        : 'http://localhost:3000';
+      // redirect_uri debe coincidir EXACTAMENTE con lo registrado en credentials.json
+      const redirectUri = "http://localhost:3000/google-callback";
+      const backendBase = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
       
-      const redirectUri = `${origin}/google-callback`;
-      // Usar 'Luis' como ID para que coincida con el perfil que cargamos después
-      const res = await axios.get(`${API}/google-drive/auth-url?user_id=Luis&redirect_uri=${encodeURIComponent(redirectUri)}`);
+      const res = await axios.get(`${backendBase}/google-drive/auth-url?user_id=gproatechnology&redirect_uri=${encodeURIComponent(redirectUri)}`);
       
-      const authWindow = window.open(res.data.auth_url, "Login con Google", "width=600,height=700");
+      window.open(res.data.auth_url, "Login con Google", "width=600,height=700");
       
-      // Escuchar el mensaje de éxito
+      // Escuchar el postMessage que enviará GoogleCallback.js
       const handleAuthMessage = (event) => {
-        if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
+        if (event.data && event.data.type === "GOOGLE_AUTH_SUCCESS") {
           const googleUser = event.data.user || {};
           console.log('DEBUG: Datos de Google ->', JSON.stringify(googleUser, null, 2));
           
-          // FORZADO DE IDENTIDAD: Si entramos por Google, asumimos rango de CEO para ti
-          const isCEO = googleUser.email?.includes("gproatechnology") || true; 
-          
+          const isCEO = (googleUser.email || "").includes("gproatechnology");
           onLogin({ 
-            name: googleUser.name || "CEO GProA", 
+            name: googleUser.name || (isCEO ? "CEO GProA" : "Visitante"), 
             role: isCEO ? "CEO" : "consultant", 
-            avatar: googleUser.name ? googleUser.name.charAt(0) : "G", 
-            image: googleUser.picture || null, // Si no hay foto, el Sidebar usará la inicial
+            avatar: googleUser.name ? googleUser.name.charAt(0).toUpperCase() : "G", 
+            image: googleUser.picture || null,
             email: googleUser.email
           });
+          setIsLoading(false);
           window.removeEventListener("message", handleAuthMessage);
         }
       };
@@ -61,12 +56,8 @@ export default function Login({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Identificar perfil basado en el email
-    const user = email.toLowerCase().includes("jorge") 
-      ? { name: "Jorge", role: "manager", avatar: "J", image: avatarJorge }
-      : { name: "Luis", role: "consultant", avatar: "L", image: avatarLuis };
-
+    // Modo demo: acceso limitado con pantalla de bienvenida
+    const user = { name: "Visitante", role: "demo", avatar: "V", image: null };
     setTimeout(() => {
       setIsLoading(false);
       onLogin(user); 
@@ -205,8 +196,8 @@ export default function Login({ onLogin }) {
         </button>
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-slate-500">
-            *Modo Demo: Puedes ingresar con cualquier credencial para probar el sistema.
+          <p className="text-xs text-slate-600">
+            Plataforma exclusiva GProA Technology · Acceso restringido
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { API } from "@/App";
@@ -7,35 +7,41 @@ import { SpinnerGap, CheckCircle, Warning } from "@phosphor-icons/react";
 export default function GoogleCallback() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get("code");
-  const state = searchParams.get("state"); // Optional: verify state if needed
+  const state = searchParams.get("state");
+  const calledRef = useRef(false); // Guard against React StrictMode double-execution
 
   useEffect(() => {
+    if (calledRef.current) return; // Already called, skip
+    calledRef.current = true;
+
     const processCallback = async () => {
       if (code) {
         try {
-          // Get user_id from the state or local storage if we passed it
-          const userId = localStorage.getItem("google_auth_user_id");
+          const userId = localStorage.getItem("google_auth_user_id") || "gproatechnology";
           const origin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? window.location.origin 
             : 'http://localhost:3000';
           const redirectUri = `${origin}/google-callback`;
           
+          console.log("GoogleCallback: calling backend with user_id=", userId);
           const res = await axios.get(`${API}/google-drive/callback?code=${code}&state=${state}&user_id=${userId}&redirect_uri=${encodeURIComponent(redirectUri)}`);
           
-          // Notify the opener window using a more permissive origin for dev
+          console.log("GoogleCallback: backend response =", JSON.stringify(res.data));
+          
           if (window.opener) {
             window.opener.postMessage({ 
               type: "GOOGLE_AUTH_SUCCESS",
-              user: res.data.user
+              user: res.data.user || {}
             }, "*");
           }
           
-          // Explicitly close the window from within
-          setTimeout(() => {
-            window.close();
-          }, 500);
+          setTimeout(() => { window.close(); }, 500);
         } catch (e) {
           console.error("Error in callback processing:", e);
+          if (window.opener) {
+            window.opener.postMessage({ type: "GOOGLE_AUTH_SUCCESS", user: {} }, "*");
+          }
+          setTimeout(() => { window.close(); }, 1000);
         }
       }
     };

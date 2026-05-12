@@ -9,6 +9,7 @@ import ProjectDetail from "@/components/ProjectDetail";
 import SplashScreen from "./components/SplashScreen";
 import Login from "./components/Login";
 import GoogleCallback from "./components/GoogleCallback";
+import DemoScreen from "./components/DemoScreen";
 
 let API = "/api";
 if (process.env.REACT_APP_BACKEND_URL) {
@@ -138,7 +139,13 @@ function MainApp() {
         <Route path="/google-callback" element={<GoogleCallback />} />
         <Route 
           path="/*" 
-          element={!user ? <Login onLogin={handleLogin} /> : <AppLayout user={user} onLogout={handleLogout} />} 
+          element={
+            !user 
+              ? <Login onLogin={handleLogin} />
+              : user.role === "demo"
+                ? <DemoScreen onLogout={handleLogout} />
+                : <AppLayout user={user} onLogout={handleLogout} />
+          } 
         />
       </Routes>
     </>
