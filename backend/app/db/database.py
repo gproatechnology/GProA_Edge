@@ -64,6 +64,23 @@ class UnifiedDB:
                 except:
                     pass # La columna ya existe
 
+            await self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS google_tokens (
+                    user_id TEXT PRIMARY KEY,
+                    token_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+            await self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS sync_logs (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    files_synced TEXT NOT NULL,
+                    status TEXT NOT NULL
+                )
+            """)
             await self.conn.commit()
             print(">>> SQLite database ready")
 
@@ -293,6 +310,68 @@ class UnifiedDB:
             async with self.conn.execute(sql, params) as cur:
                 row = await cur.fetchone()
                 return row["cnt"] if row else 0
+
+    async def google_tokens_upsert(self, user_id: str, token_json: str):
+        import datetime
+        updated_at = datetime.datetime.now().isoformat()
+        if self.mode == "mongodb":
+            await db.google_tokens.update_one(
+                {"user_id": user_id},
+                {"$set": {"token_json": token_json, "updated_at": updated_at}},
+                upsert=True
+            )
+        else:
+            await self._ensure_sqlite()
+            await self.conn.execute("""
+                INSERT INTO google_tokens (user_id, token_json, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    token_json=excluded.token_json,
+                    updated_at=excluded.updated_at
+            """, (user_id, token_json, updated_at))
+            await self.conn.commit()
+
+    async def google_tokens_find_one(self, user_id: str):
+        if self.mode == "mongodb":
+            return await db.google_tokens.find_one({"user_id": user_id})
+        else:
+            await self._ensure_sqlite()
+            async with self.conn.execute("SELECT * FROM google_tokens WHERE user_id=?", (user_id,)) as cur:
+                row = await cur.fetchone()
+                return dict(row) if row else None
+
+    async def sync_logs_insert(self, doc: dict):
+        if self.mode == "mongodb":
+            await db.sync_logs.insert_one(doc)
+        else:
+            await self._ensure_sqlite()
+            await self.conn.execute("""
+                INSERT INTO sync_logs (id, project_id, user_id, timestamp, files_synced, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                doc["id"], doc["project_id"], doc["user_id"],
+                doc["timestamp"], json.dumps(doc["files_synced"]),
+                doc["status"]
+            ))
+            await self.conn.commit()
+
+    async def sync_logs_find(self, query: dict):
+        if self.mode == "mongodb":
+            cursor = db.sync_logs.find(query).sort("timestamp", -1)
+            return await cursor.to_list(100)
+        else:
+            await self._ensure_sqlite()
+            where = [f"{k}=?" for k in query.keys()]
+            params = list(query.values())
+            sql = f"SELECT * FROM sync_logs WHERE {' AND '.join(where)} ORDER BY timestamp DESC"
+            async with self.conn.execute(sql, params) as cur:
+                rows = await cur.fetchall()
+                res = []
+                for r in rows:
+                    rd = dict(r)
+                    rd["files_synced"] = json.loads(rd["files_synced"])
+                    res.append(rd)
+                return res
 
 # Initialize unified DB
 udb = UnifiedDB()

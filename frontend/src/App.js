@@ -8,6 +8,7 @@ import ProjectDetail from "@/components/ProjectDetail";
 
 import SplashScreen from "./components/SplashScreen";
 import Login from "./components/Login";
+import GoogleCallback from "./components/GoogleCallback";
 
 let API = "/api";
 if (process.env.REACT_APP_BACKEND_URL) {
@@ -77,6 +78,7 @@ function AppLayout({ user }) {
             path="/projects/:projectId"
             element={<ProjectDetailWrapper onProjectDeleted={fetchProjects} user={user} />}
           />
+          <Route path="/google-callback" element={<GoogleCallback />} />
         </Routes>
       </main>
     </div>

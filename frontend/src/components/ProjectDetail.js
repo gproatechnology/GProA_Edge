@@ -10,6 +10,7 @@ import EdgeStatusTab from "@/components/EdgeStatusTab";
 import EdgeComplianceTab from "@/components/EdgeComplianceTab";
 import BatchProgressModal from "@/components/BatchProgressModal";
 import DataPreviewModal from "@/components/DataPreviewModal";
+import LoadFlowTab from "@/components/LoadFlowTab";
 import ChatAssistant from "@/components/ChatAssistant";
 import { generateProjectPDF } from "@/utils/generateProjectPDF";
 
@@ -17,6 +18,7 @@ const TABS = [
   { id: "files", label: "Archivos" },
   { id: "data", label: "Datos Extraidos" },
   { id: "compliance", label: "Compliance EDGE" },
+  { id: "flow", label: "Flujo de Carga" },
   { id: "status", label: "Resumen" },
 ];
 
@@ -256,6 +258,9 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
         {activeTab === "compliance" && (
           <EdgeComplianceTab projectId={projectId} refreshKey={refreshKey} />
         )}
+        {activeTab === "flow" && (
+          <LoadFlowTab projectId={projectId} />
+        )}
         {activeTab === "status" && <EdgeStatusTab projectId={projectId} status={status} />}
       </div>
 
@@ -274,7 +279,7 @@ export default function ProjectDetail({ projectId, onProjectDeleted }) {
         file={previewFile}
       />
 
-      <ChatAssistant projectId={projectId} />
+      <ChatAssistant projectId={projectId} user={user} />
     </div>
   );
 }

@@ -293,58 +293,99 @@ Contenido:
         return process_eem16_renewables_mock(content)
 
 
+# EDGE Baselines (Values used by the official EDGE App)
+EDGE_BASELINES = {
+    "WATER": {
+        "Faucets": 6.0,      # LPM (Litros por minuto)
+        "Showers": 10.0,     # LPM
+        "Toilets": 6.0,      # LPF (Litros por descarga)
+        "Urinals": 1.0,      # LPF
+        "KitchenFaucets": 6.0 # LPM
+    }
+}
+
 async def process_water_fixtures(content: str, measure: str, api_key: str) -> dict:
-    """WEM01/WEM02 Specialized: Extract water fixture data."""
+    """WEM01/WEM02 Specialized: Extract water fixture data and calculate savings."""
     if not api_key:
-        return process_water_fixtures_mock(measure, content)
-
-    client = get_openai_client(api_key)
-    prompt = f"""Analiza este documento de aparatos sanitarios/griferias para medida EDGE {measure}.
-
-Extrae para cada aparato:
-- tipo: grifo, ducha, inodoro, urinario, etc.
-- marca
-- modelo
-- flujo_lpm: flujo en litros por minuto (griferias) o litros por descarga (sanitarios)
-- cantidad
-
-Responde SOLO en JSON:
-{{
-  "aparatos": [
+        data = process_water_fixtures_mock(measure, content)
+    else:
+        client = get_openai_client(api_key)
+        prompt = f"""Analiza este documento de aparatos sanitarios/griferias para medida EDGE {measure}.
+    
+    Extrae para cada aparato:
+    - tipo: grifo, ducha, inodoro, urinario, etc.
+    - marca
+    - modelo
+    - flujo_lpm: flujo en litros por minuto (griferias) o litros por descarga (sanitarios)
+    - cantidad
+    
+    Responde SOLO en JSON:
     {{
-      "tipo": "string",
-      "marca": "string",
-      "modelo": "string",
-      "flujo_lpm": 0.0,
-      "cantidad": 0
+      "aparatos": [
+        {{
+          "tipo": "string",
+          "marca": "string",
+          "modelo": "string",
+          "flujo_lpm": 0.0,
+          "cantidad": 0
+        }}
+      ]
     }}
-  ],
-  "flujo_promedio": 0.0,
-  "alertas": []
-}}
+    
+    Contenido:
+    {content[:4000]}"""
 
-Contenido:
-{content[:4000]}"""
+        try:
+            response = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Eres un ingeniero hidraulico analizando griferias y sanitarios para EDGE. Responde SOLO en JSON valido."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=1500
+            )
+            result_text = response.choices[0].message.content.strip()
+            if result_text.startswith("```"):
+                result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            data = json.loads(result_text)
+        except Exception as e:
+            logger.error(f"Water processor error: {e}")
+            data = process_water_fixtures_mock(measure, content)
 
-    try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Eres un ingeniero hidraulico analizando griferias y sanitarios para EDGE. Responde SOLO en JSON valido."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=1500
-        )
-        result_text = response.choices[0].message.content.strip()
+    # ── Real Calculation vs Baseline ───────────────────────────────────
+    aparatos = data.get("aparatos", [])
+    total_flow = 0
+    total_qty = 0
+    savings_detail = []
 
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    for item in aparatos:
+        qty = item.get("cantidad", 1) or 1
+        flow = item.get("flujo_lpm", 0.0) or 0.0
+        tipo = item.get("tipo", "").lower()
+        
+        # Determine baseline
+        baseline = 6.0 # Default
+        if "ducha" in tipo or "shower" in tipo: baseline = EDGE_BASELINES["WATER"]["Showers"]
+        elif "inodoro" in tipo or "toilet" in tipo or "sanitario" in tipo: baseline = EDGE_BASELINES["WATER"]["Toilets"]
+        elif "urinario" in tipo or "urinal" in tipo: baseline = EDGE_BASELINES["WATER"]["Urinals"]
+        elif "cocina" in tipo or "kitchen" in tipo: baseline = EDGE_BASELINES["WATER"]["KitchenFaucets"]
+        else: baseline = EDGE_BASELINES["WATER"]["Faucets"]
 
-        return json.loads(result_text)
-    except (json.JSONDecodeError, Exception) as e:
-        logger.error(f"Water processor error: {e}")
-        return process_water_fixtures_mock(measure, content)
+        saving = ((baseline - flow) / baseline) * 100 if baseline > 0 else 0
+        
+        item["baseline"] = baseline
+        item["saving_percent"] = round(saving, 1)
+        
+        total_flow += flow * qty
+        total_qty += qty
+        savings_detail.append(saving)
+
+    data["flujo_promedio"] = round(total_flow / total_qty, 2) if total_qty > 0 else 0
+    data["ahorro_global_estimado"] = round(sum(savings_detail) / len(savings_detail), 1) if savings_detail else 0
+    data["cumple_edge"] = data["ahorro_global_estimado"] >= 20 # EDGE requires 20% savings
+    
+    return data
 
 
 # Dispatcher: routes to the correct processor based on measure

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { API } from "@/App";
-import { ChatCircleDots, PaperPlaneTilt, X, Minus, Robot, User, SpinnerGap } from "@phosphor-icons/react";
+import { ChatCircleDots, PaperPlaneTilt, X, Minus, Robot, User, SpinnerGap, GoogleLogo } from "@phosphor-icons/react";
+import GoogleDriveForm from "./GoogleDriveForm";
 
-export default function ChatAssistant({ projectId }) {
+export default function ChatAssistant({ projectId, user }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState("");
@@ -11,6 +12,7 @@ export default function ChatAssistant({ projectId }) {
     { role: "assistant", content: "¡Hola! Soy tu asistente experto de GProA EDGE. ¿En qué puedo ayudarte con este proyecto?" }
   ]);
   const [loading, setLoading] = useState(false);
+  const [showDriveForm, setShowDriveForm] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -26,8 +28,15 @@ export default function ChatAssistant({ projectId }) {
     const userMsg = { role: "user", content: message };
     setHistory(prev => [...prev, userMsg]);
     setMessage("");
-    setLoading(true);
 
+    // Magic Word Check
+    if (message.toLowerCase().trim() === "google drive") {
+      setShowDriveForm(true);
+      setHistory(prev => [...prev, { role: "assistant", content: "¡Excelente! He activado el módulo de conexión con Google Drive. Por favor, completa la configuración a continuación:" }]);
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await axios.post(`${API}/projects/${projectId}/chat`, {
         message: userMsg.content,
@@ -99,6 +108,20 @@ export default function ChatAssistant({ projectId }) {
                 <div className="bg-card border border-border p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
                   <SpinnerGap className="w-4 h-4 animate-spin text-primary" />
                   <span className="text-xs text-muted-foreground">Pensando...</span>
+                </div>
+              </div>
+            {showDriveForm && (
+              <div className="flex justify-start">
+                <div className="bg-card border border-primary/20 p-4 rounded-2xl rounded-tl-none shadow-xl w-full max-w-[95%]">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-primary flex items-center gap-2">
+                      <GoogleLogo weight="bold" /> Google Drive Integration
+                    </span>
+                    <button onClick={() => setShowDriveForm(false)} className="p-1 hover:bg-muted rounded-md text-muted-foreground">
+                      <X weight="bold" className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <GoogleDriveForm projectId={projectId} user={user} onComplete={() => setShowDriveForm(false)} />
                 </div>
               </div>
             )}
