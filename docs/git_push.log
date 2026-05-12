@@ -348,3 +348,19 @@ Mensaje: Update from ps1 to Google Drive Acces
 Rama: submain
 Archivos: 16
 Resultado push: ÉXITO
+[2026-05-12 17:03:51] OK: Agregando todos los archivos
+
+[2026-05-12 17:05:05] OK: Creando commit
+
+[2026-05-12 17:05:24] OK: Subiendo a submain
+
+[2026-05-12 17:05:30] OK: Subiendo a submain
+
+
+=== INFORME FINAL ===
+Hash: e81f282
+Fecha: Tue May 12 17:05:04 2026
+Mensaje: feat: Google SSO identity + Demo Mode + PKCE OAuth fix 
+Rama: submain
+Archivos: 7
+Resultado push: ÉXITO
