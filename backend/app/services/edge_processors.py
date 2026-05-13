@@ -6,19 +6,10 @@ import json
 import uuid
 import logging
 import os
-from openai import AsyncOpenAI
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from google.genai import types
+from app.core.config import gemini_client, GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
-
-# Helper: create client if API key available
-def get_openai_client(api_key: str = None):
-    if api_key:
-        return AsyncOpenAI(api_key=api_key)
-    return None
 
 
 # ── MOCK PROCESSORS (Demo Mode) ────────────────────────────────────────
@@ -90,10 +81,9 @@ def process_water_fixtures_mock(measure: str, content: str) -> dict:
 
 async def process_eem22_luminaires(content: str, api_key: str) -> dict:
     """EEM22 Specialized: Extract luminaire table and calculate global efficacy."""
-    if not api_key:
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return process_eem22_luminaires_mock(content)
 
-    client = get_openai_client(api_key)
     prompt = f"""Analiza este documento de iluminacion y extrae TODAS las luminarias encontradas.
 
 Para CADA luminaria extrae:
@@ -133,19 +123,17 @@ Contenido del archivo:
 {content[:4000]}"""
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Eres un ingeniero especialista en iluminacion analizando tablas de luminarias para certificacion EDGE EEM22. Responde SOLO en JSON valido."},
-                {"role": "user", "content": prompt}
-            ],
+        config = types.GenerateContentConfig(
+            system_instruction="Eres un ingeniero especialista en iluminacion analizando tablas de luminarias para certificacion EDGE EEM22. Responde SOLO en JSON valido.",
             temperature=0.3,
-            max_tokens=1500
+            response_mime_type="application/json"
         )
-        result_text = response.choices[0].message.content.strip()
-
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt,
+            config=config
+        )
+        result_text = response.text.strip()
 
         data = json.loads(result_text)
 
@@ -177,10 +165,9 @@ Contenido del archivo:
 
 async def process_eem09_hvac(content: str, api_key: str) -> dict:
     """EEM09 Specialized: Extract HVAC equipment data."""
-    if not api_key:
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return process_eem09_hvac_mock(content)
 
-    client = get_openai_client(api_key)
     prompt = f"""Analiza este documento de equipos HVAC y extrae la informacion de cada equipo.
 
 Para CADA equipo extrae:
@@ -217,19 +204,17 @@ Contenido:
 {content[:4000]}"""
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Eres un ingeniero mecanico analizando equipos HVAC para certificacion EDGE. Responde SOLO en JSON valido."},
-                {"role": "user", "content": prompt}
-            ],
+        config = types.GenerateContentConfig(
+            system_instruction="Eres un ingeniero mecanico analizando equipos HVAC para certificacion EDGE. Responde SOLO en JSON valido.",
             temperature=0.3,
-            max_tokens=1500
+            response_mime_type="application/json"
         )
-        result_text = response.choices[0].message.content.strip()
-
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt,
+            config=config
+        )
+        result_text = response.text.strip()
 
         return json.loads(result_text)
     except (json.JSONDecodeError, Exception) as e:
@@ -239,10 +224,9 @@ Contenido:
 
 async def process_eem16_renewables(content: str, api_key: str) -> dict:
     """EEM16 Specialized: Extract renewable energy data."""
-    if not api_key:
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return process_eem16_renewables_mock(content)
 
-    client = get_openai_client(api_key)
     prompt = f"""Analiza este documento de sistema de energia renovable y extrae:
 
 - tipo_sistema: fotovoltaico, eolico, etc.
@@ -273,19 +257,17 @@ Contenido:
 {content[:4000]}"""
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Eres un ingeniero de energias renovables analizando sistemas fotovoltaicos. Responde SOLO en JSON valido."},
-                {"role": "user", "content": prompt}
-            ],
+        config = types.GenerateContentConfig(
+            system_instruction="Eres un ingeniero de energias renovables analizando sistemas fotovoltaicos. Responde SOLO en JSON valido.",
             temperature=0.3,
-            max_tokens=1500
+            response_mime_type="application/json"
         )
-        result_text = response.choices[0].message.content.strip()
-
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt,
+            config=config
+        )
+        result_text = response.text.strip()
 
         return json.loads(result_text)
     except (json.JSONDecodeError, Exception) as e:
@@ -306,10 +288,9 @@ EDGE_BASELINES = {
 
 async def process_water_fixtures(content: str, measure: str, api_key: str) -> dict:
     """WEM01/WEM02 Specialized: Extract water fixture data and calculate savings."""
-    if not api_key:
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         data = process_water_fixtures_mock(measure, content)
     else:
-        client = get_openai_client(api_key)
         prompt = f"""Analiza este documento de aparatos sanitarios/griferias para medida EDGE {measure}.
     
     Extrae para cada aparato:
@@ -336,18 +317,17 @@ async def process_water_fixtures(content: str, measure: str, api_key: str) -> di
     {content[:4000]}"""
 
         try:
-            response = await client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "Eres un ingeniero hidraulico analizando griferias y sanitarios para EDGE. Responde SOLO en JSON valido."},
-                    {"role": "user", "content": prompt}
-                ],
+            config = types.GenerateContentConfig(
+                system_instruction="Eres un ingeniero hidraulico analizando griferias y sanitarios para EDGE. Responde SOLO en JSON valido.",
                 temperature=0.3,
-                max_tokens=1500
+                response_mime_type="application/json"
             )
-            result_text = response.choices[0].message.content.strip()
-            if result_text.startswith("```"):
-                result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            response = await gemini_client.aio.models.generate_content(
+                model="gemini-1.5-pro",
+                contents=prompt,
+                config=config
+            )
+            result_text = response.text.strip()
             data = json.loads(result_text)
         except Exception as e:
             logger.error(f"Water processor error: {e}")

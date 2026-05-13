@@ -29,6 +29,13 @@ export default function Login({ onLogin }) {
       
       // Escuchar el postMessage que enviará GoogleCallback.js
       const handleAuthMessage = (event) => {
+        // Validación de seguridad para evitar spoofing de CEO
+        const validOrigins = ["http://localhost:3000", "http://127.0.0.1:3000", window.location.origin];
+        if (!validOrigins.includes(event.origin)) {
+          console.warn("Bloqueado intento de postMessage de origen desconocido:", event.origin);
+          return;
+        }
+
         if (event.data && event.data.type === "GOOGLE_AUTH_SUCCESS") {
           const googleUser = event.data.user || {};
           console.log('DEBUG: Datos de Google ->', JSON.stringify(googleUser, null, 2));

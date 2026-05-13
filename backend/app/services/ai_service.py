@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from app.core.config import openai_client, OPENAI_API_KEY
+from app.core.config import gemini_client, GEMINI_API_KEY
 from app.services.edge_rules import EDGE_WBS
 from app.db.database import udb
 
@@ -73,11 +73,12 @@ def extract_data_mock(content: str, measure: str = "") -> dict:
 # ── AI Processing Functions ─────────────────────────────────────────────
 
 async def classify_file(content: str, filename: str = "") -> dict:
-    """Classify file using OpenAI or mock."""
-    if not openai_client or OPENAI_API_KEY == "sk-your-key-here":
+    """Classify file using Gemini or mock."""
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return classify_file_mock(content, filename)
     
     try:
+        from google.genai import types
         # Prompt mejorado para considerar medidas específicas de EDGE
         prompt = f"""Clasifica este archivo técnico de construcción para certificación EDGE.
         Nombre del archivo: {filename}
@@ -93,21 +94,26 @@ async def classify_file(content: str, filename: str = "") -> dict:
             "confidence": 0.0-1.0
         }}
         """
-        response = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt + "\n\nContenido parcial:\n" + content[:2000]}],
-            temperature=0.3
+        
+        config = types.GenerateContentConfig(
+            temperature=0.3,
+            response_mime_type="application/json"
         )
-        result_text = response.choices[0].message.content.strip()
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        return json.loads(result_text)
-    except:
+        
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt + "\n\nContenido parcial:\n" + content[:2000],
+            config=config
+        )
+        
+        return json.loads(response.text.strip())
+    except Exception as e:
+        logger.error(f"Gemini classify error: {e}")
         return classify_file_mock(content, filename)
 
 async def extract_data(content: str, measure: str = "") -> dict:
     """Extract specialized data using AI based on the detected measure."""
-    if not openai_client or OPENAI_API_KEY == "sk-your-key-here":
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return extract_data_mock(content, measure)
     
     try:
@@ -120,16 +126,22 @@ async def extract_data(content: str, measure: str = "") -> dict:
         
         Responde ÚNICAMENTE en JSON con los valores encontrados (usa null si no se encuentra).
         """
-        response = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt + "\n\nTexto:\n" + content[:4000]}],
-            temperature=0.1
+        
+        from google.genai import types
+        config = types.GenerateContentConfig(
+            temperature=0.1,
+            response_mime_type="application/json"
         )
-        result_text = response.choices[0].message.content.strip()
-        if result_text.startswith("```"):
-            result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        return json.loads(result_text)
-    except:
+        
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt + "\n\nTexto:\n" + content[:4000],
+            config=config
+        )
+        
+        return json.loads(response.text.strip())
+    except Exception as e:
+        logger.error(f"Gemini extract error: {e}")
         return extract_data_mock(content, measure)
 
 async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> dict:
@@ -264,7 +276,7 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                     update["specialized_data"]["status"] = "warning"
 
         # 4. FALLBACK MOCK (ONLY if not already set by parsers)
-        if "specialized_data" not in update and not openai_client:
+        if "specialized_data" not in update and not gemini_client:
             if measure == "EEM22":
                 update["specialized_data"] = {"total_watts": 10, "total_lumens": 1100, "eficacia": 110}
             elif measure == "DESIGN":

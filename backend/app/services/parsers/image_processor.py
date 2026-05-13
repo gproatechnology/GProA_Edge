@@ -1,19 +1,19 @@
-import base64
 import os
 import json
 import logging
 import fitz # PyMuPDF para convertir PDF a imagen
 from typing import Dict, Any, List
-from app.core.config import openai_client, OPENAI_API_KEY
+from google.genai import types
+from app.core.config import gemini_client, GEMINI_API_KEY
 
 logger = logging.getLogger(__name__)
 
 class ImageProcessor:
-    """Procesador de imágenes técnicas mediante IA (OpenAI Vision)."""
+    """Procesador de imágenes técnicas mediante IA (Gemini Multimodal)."""
 
     async def process(self, file_path: str, hint_measure: str = "") -> Dict[str, Any]:
-        """Procesa una imagen o PDF (como imagen) usando OpenAI Vision API."""
-        if not openai_client or OPENAI_API_KEY == "sk-your-key-here":
+        """Procesa una imagen o PDF (como imagen) usando Gemini API."""
+        if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
             logger.warning("Vision API skip: No API Key or Demo Mode")
             return {"error": "No API Key for Vision"}
 
@@ -35,7 +35,7 @@ class ImageProcessor:
                 process_path = file_path
 
             with open(process_path, "rb") as image_file:
-                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                image_bytes = image_file.read()
 
             # Eliminar temporal si existe
             if temp_image_path and os.path.exists(temp_image_path):
@@ -63,31 +63,22 @@ class ImageProcessor:
                 "message": "Descripción de lo encontrado"
             }}"""
 
-            response = await openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
-                                }
-                            }
-                        ],
-                    }
-                ],
-                max_tokens=1000,
+            image_part = types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg' if ext in ['jpg', 'jpeg'] else 'image/png')
+            
+            config = types.GenerateContentConfig(
+                temperature=0.3,
+                response_mime_type="application/json"
             )
 
-            result_text = response.choices[0].message.content.strip()
-            if result_text.startswith("```"):
-                result_text = result_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            response = await gemini_client.aio.models.generate_content(
+                model="gemini-1.5-pro",
+                contents=[prompt, image_part],
+                config=config
+            )
 
+            result_text = response.text.strip()
             return json.loads(result_text)
 
         except Exception as e:
-            logger.error(f"Error procesando imagen {file_path}: {e}")
+            logger.error(f"Error procesando imagen {file_path} con Gemini: {e}")
             return {"error": str(e)}

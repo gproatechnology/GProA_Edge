@@ -14,7 +14,7 @@
 ## ✨ Funcionalidades Principales
 
 - 📋 **Gestión de Proyectos**: Administración centralizada de proyectos y tipologías de certificación.
-- 🧠 **Procesamiento con IA**: Clasificación y extracción técnica con GPT-4o (Watts, Lúmenes, COP, marcas/modelos).
+- 🧠 **Procesamiento con IA**: Clasificación y extracción técnica con Gemini 1.5 Pro (Watts, Lúmenes, COP, marcas/modelos).
 - 🔗 **Sincronización con Google Drive**: Descarga automática de archivos desde carpetas del Drive del usuario.
 - 🤖 **Motor de Auditoría Automática**: Al sincronizar, cada archivo es clasificado, parseado y analizado sin intervención manual.
 - 📊 **Dashboard en Tiempo Real**: KPIs de CO2, archivos procesados y eficiencia energética actualizados automáticamente.
@@ -31,7 +31,7 @@
 ![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite)
 ![MongoDB](https://img.shields.io/badge/MongoDB-4DB33D?style=for-the-badge&logo=mongodb)
-![GPT-4o](https://img.shields.io/badge/OpenAI-GPT--4o-orange?style=for-the-badge&logo=openai)
+![Gemini](https://img.shields.io/badge/Google-Gemini-blue?style=for-the-badge&logo=google)
 ![Google Drive](https://img.shields.io/badge/Google_Drive-4285F4?style=for-the-badge&logo=googledrive)
 
 ---
@@ -44,7 +44,7 @@ graph TB
     GD[Google Drive] -->|OAuth2 SSO| API
     API -->|Sync + Audit| AS[AuditService]
     AS -->|Parse| PA[PDF / CAD / Excel Parsers]
-    AS -->|AI Analysis| LLM[GPT-4o EdgeProcessors]
+    AS -->|AI Analysis| LLM[Gemini EdgeProcessors]
     AS -->|Persist Metrics| DB[(SQLite / MongoDB)]
     DB -->|Query| API
     API -->|CO2, Files, Efficiency| FE
@@ -63,7 +63,7 @@ flowchart TD
     E -->|PDF| F[PDF Parser extrae texto]
     E -->|DXF/DWG| G[CAD Parser extrae geometría]
     E -->|XLSX| H[Excel Parser extrae tablas]
-    F & G & H --> I[EdgeProcessor analiza con GPT-4o]
+    F & G & H --> I[EdgeProcessor analiza con Gemini 1.5 Pro]
     I --> J[Actualiza DB: watts, lumens, COP, áreas]
     J --> K[Recalcula métricas del proyecto: CO2, eficiencia]
     K --> L[Dashboard se actualiza en tiempo real]
@@ -198,9 +198,9 @@ GProA_EOSIS_Edge/
 | Feature | **Demo** (Default) | **Producción** |
 |---|---|---|
 | **Base de datos** | SQLite local | MongoDB Atlas |
-| **Motor IA** | Mock data | OpenAI GPT-4o |
+| **Motor IA** | Mock data | Google Gemini 1.5 Pro |
 | **Google Drive** | Sin sync | Sync completo OAuth2 |
-| **Costo** | $0 | Por token OpenAI |
+| **Costo** | $0 | Por token Gemini |
 
 ---
 
@@ -208,7 +208,7 @@ GProA_EOSIS_Edge/
 
 | Variable | Descripción | Requerido |
 |---|---|---|
-| `OPENAI_API_KEY` | Clave API de OpenAI (GPT-4o) | Para IA real |
+| `GEMINI_API_KEY` | Clave API de Google AI (Gemini 1.5 Pro) | Para IA real |
 | `MONGO_URL` | Connection string MongoDB Atlas | Para prod |
 | `GOOGLE_OAUTH_CLIENT_ID` | Client ID de Google Cloud Console | Para SSO |
 | `CORS_ORIGINS` | Orígenes permitidos | En producción |
@@ -227,7 +227,7 @@ MIT — GProA Technology © 2026
 - [EDGE Buildings](https://edgebuildings.com/) — Estándar de certificación
 - [IFC EDGE](https://ifc.org/our-work/edge/) — Software oficial de certificación
 - [Google Cloud](https://cloud.google.com/) — OAuth2 & Drive API
-- [OpenAI](https://openai.com/) — GPT-4o
+- [Google DeepMind](https://deepmind.google/) — Gemini 1.5 Pro
 
 ---
 ⭐ ¡Dale una estrella en GitHub si este proyecto te es útil!

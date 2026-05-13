@@ -9,7 +9,7 @@ services:
     env: python
     region: oregon
     # First build the React app, then install Python requirements
-    buildCommand: cd frontend && yarn install && CI=false yarn build && cd ../backend && pip install -r requirements.txt
+    buildCommand: cd frontend && npm install --legacy-peer-deps && CI=false npm run build && cd ../backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       # Database: Leave empty to use SQLite (demo mode)
@@ -18,7 +18,7 @@ services:
         # IMPORTANT: Do NOT set this value to use SQLite fallback
       
       # OpenAI: Leave empty to use mock AI responses (demo mode)
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
         # IMPORTANT: Do NOT set this value to use mock responses
       

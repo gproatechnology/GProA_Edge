@@ -2,6 +2,8 @@ import os
 import json
 import logging
 import io
+import datetime
+import uuid
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from app.core.config import ROOT_DIR, logger
@@ -46,7 +48,18 @@ class GoogleDriveService:
         if not token_data:
             return None
         
-        creds = Credentials.from_authorized_user_info(json.loads(token_data['token_json']), SCOPES)
+        info = json.loads(token_data['token_json'])
+        
+        # Inject client_id and client_secret if missing
+        if 'client_id' not in info or 'client_secret' not in info:
+            if os.path.exists(self.creds_path):
+                with open(self.creds_path) as f:
+                    creds_data = json.load(f)
+                web = creds_data.get('web', creds_data.get('installed', {}))
+                info['client_id'] = web.get('client_id')
+                info['client_secret'] = web.get('client_secret')
+        
+        creds = Credentials.from_authorized_user_info(info, SCOPES)
         
         if creds and creds.expired and creds.refresh_token:
             try:
@@ -159,7 +172,6 @@ class GoogleDriveService:
                 dest = target_dir / file['name']
                 if await self.download_file(user_id, file['id'], str(dest)):
                     # 1. Create DB entry for the file
-                    import uuid
                     file_id = str(uuid.uuid4())
                     file_doc = {
                         "id": file_id,
@@ -174,16 +186,16 @@ class GoogleDriveService:
                     
                     # 2. Trigger Audit (Background-ish)
                     try:
+                        import asyncio
                         from app.services.audit_service import audit_service
-                        await audit_service.process_file(file_id)
+                        # Lanza la auditoría en segundo plano para no bloquear el retorno del API
+                        asyncio.create_task(audit_service.process_file(file_id))
                     except Exception as e:
                         logger.error(f"Post-sync audit failed for {file['name']}: {e}")
                     
                     downloaded_files.append(f"{file.get('parent_name', '')}/{file['name']}" if file.get('parent_name') else file['name'])
         
         # Log the sync action
-        import uuid
-        import datetime
         sync_log = {
             "id": str(uuid.uuid4()),
             "project_id": project_id,

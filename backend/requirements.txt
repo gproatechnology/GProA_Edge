@@ -5,7 +5,7 @@ python-multipart
 python-dotenv
 aiosqlite
 motor
-openai
+google-genai
 ezdxf
 pdfplumber
 openpyxl
