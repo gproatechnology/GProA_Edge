@@ -14,14 +14,14 @@
 ## ✨ Funcionalidades Principales
 
 - 📋 **Gestión de Proyectos**: Administración centralizada de proyectos y tipologías de certificación.
-- 🧠 **Procesamiento con IA**: Clasificación y extracción técnica con Gemini 1.5 Pro (Watts, Lúmenes, COP, marcas/modelos).
+- 🧠 **Procesamiento con IA**: Clasificación y extracción técnica ultrarrápida con Gemini Flash (Watts, Lúmenes, áreas).
 - 🔗 **Sincronización con Google Drive**: Descarga automática de archivos desde carpetas del Drive del usuario.
 - 🤖 **Motor de Auditoría Automática**: Al sincronizar, cada archivo es clasificado, parseado y analizado sin intervención manual.
 - 📊 **Dashboard en Tiempo Real**: KPIs de CO2, archivos procesados y eficiencia energética actualizados automáticamente.
 - 🔐 **SSO con Google**: Autenticación con cuenta de Google, detección automática de rol (CEO / Consultor).
 - 🎨 **Identidad de Marca Premium**: Logo Cloud animado en login, branding EOSIS y EDGE integrado.
 - 📤 **Exportación Enterprise**: Generación de Excel estructurado listo para entrega a certificadores.
-- 💬 **Asistente IA Contextual**: Chat integrado que conoce el estado real de cada proyecto.
+- 💬 **Asistente IA Contextual**: Consultor experto integrado con reglas estrictas y directas, alimentado por el estado real de cada proyecto en base de datos.
 
 ---
 
@@ -63,7 +63,7 @@ flowchart TD
     E -->|PDF| F[PDF Parser extrae texto]
     E -->|DXF/DWG| G[CAD Parser extrae geometría]
     E -->|XLSX| H[Excel Parser extrae tablas]
-    F & G & H --> I[EdgeProcessor analiza con Gemini 1.5 Pro]
+    F & G & H --> I[EdgeProcessor analiza con Gemini Flash]
     I --> J[Actualiza DB: watts, lumens, COP, áreas]
     J --> K[Recalcula métricas del proyecto: CO2, eficiencia]
     K --> L[Dashboard se actualiza en tiempo real]
@@ -104,8 +104,8 @@ flowchart TD
 Nuevo servicio en `backend/app/services/audit_service.py` que orquesta:
 
 1. **Detección de Medida**: Identifica EEM22, EEM09, WEM01, WEM02, EEM16 por nombre de archivo.
-2. **Parseo**: PDF, CAD o Excel según extensión.
-3. **Procesamiento Especializado**: Llama al `EdgeProcessor` correcto (luminarias, HVAC, agua, renovables).
+2. **Parseo Multihilo**: Ejecuta `PDFParser` y `CADParser` mediante `asyncio.to_thread` en segundo plano para evitar congelar la interfaz de usuario.
+3. **Procesamiento Especializado**: Llama al `EdgeProcessor` correcto (luminarias, HVAC, agua, diseño/planos).
 4. **Persistencia**: Actualiza el registro del archivo con `watts`, `lumens`, `specialized_data`.
 5. **Recalculo de Proyecto**: Agrega métricas de CO2 y eficiencia al proyecto padre.
 
@@ -180,7 +180,7 @@ GProA_EOSIS_Edge/
 
 ### 🔜 v2.1 — Próximos Pasos
 - [ ] Validación de imagen de perfil de Google en Sidebar
-- [ ] Procesamiento en background (Celery / asyncio tasks)
+- [x] Procesamiento en background (asyncio tasks & to_thread) para parseo de archivos pesados
 - [ ] Panel de auditoría detallado por medida EDGE
 - [ ] Exportación a formato EDGE App (.xlsx certificador)
 - [ ] RBAC completo (Admin, Auditor, Consultor, Cliente)
@@ -198,7 +198,7 @@ GProA_EOSIS_Edge/
 | Feature | **Demo** (Default) | **Producción** |
 |---|---|---|
 | **Base de datos** | SQLite local | MongoDB Atlas |
-| **Motor IA** | Mock data | Google Gemini 1.5 Pro |
+| **Motor IA** | Mock data | Google Gemini Flash |
 | **Google Drive** | Sin sync | Sync completo OAuth2 |
 | **Costo** | $0 | Por token Gemini |
 
@@ -208,7 +208,7 @@ GProA_EOSIS_Edge/
 
 | Variable | Descripción | Requerido |
 |---|---|---|
-| `GEMINI_API_KEY` | Clave API de Google AI (Gemini 1.5 Pro) | Para IA real |
+| `GEMINI_API_KEY` | Clave API de Google AI (Gemini Flash) | Para IA real |
 | `MONGO_URL` | Connection string MongoDB Atlas | Para prod |
 | `GOOGLE_OAUTH_CLIENT_ID` | Client ID de Google Cloud Console | Para SSO |
 | `CORS_ORIGINS` | Orígenes permitidos | En producción |
