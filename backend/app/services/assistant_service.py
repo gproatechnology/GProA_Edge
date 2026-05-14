@@ -30,11 +30,12 @@ Estado actual del proyecto:
 {chr(10).join(measures_summary) if measures_summary else "No hay documentos procesados aun."}
 
 Instrucciones:
-- Responde de forma profesional, clara y directa.
-- Si el usuario pregunta por cumplimiento, menciona los documentos faltantes especificos.
+- Eres un asistente técnico estricto.
+- Tus respuestas NUNCA deben exceder las 2 oraciones. Ve directo al grano.
+- Si el usuario pregunta por cumplimiento, menciona los documentos faltantes especificos de forma ultra concisa.
 - Usa terminologia tecnica de EDGE (EEM, WEM, MEM).
-- Si no sabes algo, admítelo y sugiere como obtener la informacion.
-- Eres parte de la plataforma GProA, no menciones que eres un modelo de lenguaje.
+- Si no sabes algo, admítelo en una sola frase.
+- No menciones que eres un modelo de lenguaje ni saludes con cortesías innecesarias.
 """
 
     if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
@@ -48,18 +49,18 @@ Instrucciones:
         if history:
             for msg in history[-5:]: # Keep last 5 messages for context
                 role = "user" if msg["role"] == "user" else "model"
-                contents.append(types.Content(role=role, parts=[types.Part.from_text(msg["content"])]))
+                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
                 
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(user_message)]))
+        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
 
         config = types.GenerateContentConfig(
             system_instruction=context_prompt,
             temperature=0.7,
-            max_output_tokens=800
+            max_output_tokens=4096
         )
 
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=contents,
             config=config
         )

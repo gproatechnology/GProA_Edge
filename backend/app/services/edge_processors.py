@@ -129,7 +129,7 @@ Contenido del archivo:
             response_mime_type="application/json"
         )
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=prompt,
             config=config
         )
@@ -210,7 +210,7 @@ Contenido:
             response_mime_type="application/json"
         )
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=prompt,
             config=config
         )
@@ -263,7 +263,7 @@ Contenido:
             response_mime_type="application/json"
         )
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=prompt,
             config=config
         )

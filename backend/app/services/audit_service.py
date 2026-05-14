@@ -3,7 +3,7 @@ import json
 import os
 from datetime import datetime
 from app.db.database import udb
-from app.services.parsers.pdf_parser import extract_text_from_pdf
+from app.services.parsers.pdf_parser import PDFParser
 from app.services.parsers.cad_parser import CADParser
 from app.services.edge_processors import run_specialized_processor
 
@@ -34,12 +34,19 @@ class AuditService:
         content = ""
         ext = filename.split(".")[-1].lower()
         
+        import asyncio
         try:
             if ext == "pdf":
-                content = extract_text_from_pdf(file_path)
+                def _run_pdf_parser():
+                    parser = PDFParser()
+                    return parser.parse(file_path)
+                pdf_data = await asyncio.to_thread(_run_pdf_parser)
+                content = json.dumps(pdf_data)
             elif ext in ["dxf", "dwg"]:
-                parser = CADParser(file_path)
-                cad_data = parser.extract_all()
+                def _run_cad_parser():
+                    parser = CADParser(file_path)
+                    return parser.extract_all()
+                cad_data = await asyncio.to_thread(_run_cad_parser)
                 content = json.dumps(cad_data)
             else:
                 logger.warning(f"No specialized parser for extension {ext}")

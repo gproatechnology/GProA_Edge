@@ -101,7 +101,7 @@ async def classify_file(content: str, filename: str = "") -> dict:
         )
         
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=prompt + "\n\nContenido parcial:\n" + content[:2000],
             config=config
         )
@@ -134,7 +134,7 @@ async def extract_data(content: str, measure: str = "") -> dict:
         )
         
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-1.5-pro",
+            model="gemini-flash-latest",
             contents=prompt + "\n\nTexto:\n" + content[:4000],
             config=config
         )
@@ -163,12 +163,13 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
 
     try:
         # 1. DETERMINISTIC PARSING & IMAGE ANALYSIS
+        import asyncio
         det_data = None
         if file_path and os.path.exists(file_path):
             if ext in ['dxf', 'dwg']:
-                det_data = cad_parser.parse(file_path)
+                det_data = await asyncio.to_thread(cad_parser.parse, file_path)
             elif ext == 'pdf':
-                det_data = pdf_parser.parse(file_path)
+                det_data = await asyncio.to_thread(pdf_parser.parse, file_path)
                 # FALLBACK: Si el PDF no tiene texto (escaneado), usar Vision API
                 text_len = det_data.get("text_summary", {}).get("total_chars", 0)
                 if text_len < 50:
@@ -254,7 +255,7 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
             update["consumption_kwh"] = final_params.get("consumo_kwh") or final_params.get("consumption_kwh")
             
         # Build specialized data for CAD/PDF (Geometry info)
-        if det_data and ("geometry" in det_data or "entities" in det_data):
+        if det_data and ("geometry" in det_data or "entities" in det_data) and (ext in ['dxf', 'dwg'] or update.get("category_edge") == "DESIGN"):
                 geom_info = det_data.get("geometry", [])
                 total_shapes = sum(g.get("vector_shapes", 0) for g in geom_info) if isinstance(geom_info, list) else 0
                 detected_areas = det_data.get("areas", [])

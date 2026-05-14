@@ -241,7 +241,10 @@ class CADParser(BaseParser):
         for poly in msp.query('LWPOLYLINE POLYLINE'):
             is_closed = poly.is_closed
             if not is_closed and len(poly) > 2:
-                points = list(poly.points())
+                if hasattr(poly, 'get_points'):
+                    points = list(poly.get_points())
+                else:
+                    points = list(poly.points())
                 p1, p2 = points[0], points[-1]
                 dist = ((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)**0.5
                 if dist < 50.0: is_closed = True

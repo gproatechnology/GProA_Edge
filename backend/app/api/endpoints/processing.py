@@ -33,7 +33,7 @@ async def _run_batch_processing(job_id: str, files: list):
 
 @router.post("/projects/{project_id}/process-edge")
 async def process_edge_project(project_id: str):
-    from app.core.config import openai_client
+    from app.core.config import gemini_client
     project = await udb.projects_find_one({"id": project_id})
     if not project:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
@@ -45,7 +45,7 @@ async def process_edge_project(project_id: str):
     job_id = str(uuid.uuid4())
     
     # --- MODO DEMO INSTANTÁNEO ---
-    if not openai_client:
+    if not gemini_client:
         logger.info(f"MODO DEMO: Procesando {len(files)} archivos instantáneamente.")
         results = []
         for f in files:
