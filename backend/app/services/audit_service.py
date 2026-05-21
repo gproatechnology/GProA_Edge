@@ -24,11 +24,22 @@ class AuditService:
 
         if not file_path or not os.path.exists(file_path):
             logger.error(f"File path invalid or missing: {file_path}")
+            # Actualizar status a error
+            await udb.files_update_one(
+                {"id": file_id}, 
+                {"$set": {"status": "error", "error_message": "File not found"}}
+            )
             return None
 
         # 1. Classification (Detect Measure)
         measure = AuditService.detect_measure(filename)
         logger.info(f"Auditing file {filename} as measure {measure}")
+
+        # Actualizar status a processing
+        await udb.files_update_one(
+            {"id": file_id},
+            {"$set": {"status": "processing", "measure_edge": measure}}
+        )
 
         # 2. Parsing (Extract raw content)
         content = ""
@@ -83,7 +94,8 @@ class AuditService:
     def detect_measure(filename: str) -> str:
         """Heuristic to detect EDGE measure from filename."""
         fn = filename.upper()
-        if "EEM22" in fn or "LUM" in fn or "LIGHT" in fn: return "EEM22"
+        if "EEM22" in fn or "LUM" in fn or "LIGHT" in fn or "EL1" in fn or "EL2" in fn or "EL3" in fn or "EL7" in fn or "EL" in fn: return "EEM22"
+        if "EEM01" in fn or "WWR" in fn or "WINDOW" in fn: return "EEM01"
         if "EEM09" in fn or "HVAC" in fn or "AIRE" in fn: return "EEM09"
         if "WEM01" in fn or "GRIF" in fn or "SHOWER" in fn: return "WEM01"
         if "WEM02" in fn or "WC" in fn or "TOILET" in fn: return "WEM02"

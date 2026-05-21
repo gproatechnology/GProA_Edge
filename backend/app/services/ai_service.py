@@ -206,6 +206,14 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                 "confidence": classification.get("confidence"),
             })
 
+        # --- STRICT FILENAME OVERRIDE ---
+        from app.services.audit_service import AuditService
+        strict_measure = AuditService.detect_measure(filename)
+        if strict_measure != "GENERAL":
+            update["measure_edge"] = strict_measure
+            if strict_measure.startswith("EEM") or strict_measure.startswith("WEM"):
+                update["category_edge"] = "ENERGY"
+                
         # 3. DATA EXTRACTION
         measure = update.get("measure_edge", "")
         final_params = {}
@@ -240,7 +248,18 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
         # Solo si no es imagen (las imágenes ya fueron procesadas arriba)
         if ext not in ['jpg', 'jpeg', 'png']:
             ai_text = det_data.get("content_text") if det_data and det_data.get("content_text") else content
-            if ai_text:
+            
+            # --- SPECIALIZED EDGE EXTRACTION ---
+            from app.services.edge_processors import run_specialized_processor
+            from app.core.config import GEMINI_API_KEY
+            if measure != "GENERAL" and measure != "DESIGN":
+                spec_data = await run_specialized_processor(measure, ai_text, GEMINI_API_KEY, filename)
+                if spec_data and "error" not in spec_data:
+                    update["specialized_data"] = spec_data
+                    if "total_watts" in spec_data: final_params["watts"] = spec_data["total_watts"]
+                    if "total_lumens" in spec_data: final_params["lumens"] = spec_data["total_lumens"]
+
+            if ai_text and not final_params:
                 ai_params = await extract_data(ai_text, measure)
                 final_params.update(ai_params)
 
@@ -256,6 +275,7 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
             
         # Build specialized data for CAD/PDF (Geometry info)
         if det_data and ("geometry" in det_data or "entities" in det_data) and (ext in ['dxf', 'dwg'] or update.get("category_edge") == "DESIGN"):
+            if "specialized_data" not in update:
                 geom_info = det_data.get("geometry", [])
                 total_shapes = sum(g.get("vector_shapes", 0) for g in geom_info) if isinstance(geom_info, list) else 0
                 detected_areas = det_data.get("areas", [])

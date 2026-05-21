@@ -41,25 +41,32 @@ class ImageProcessor:
             if temp_image_path and os.path.exists(temp_image_path):
                 os.remove(temp_image_path)
 
-            prompt = f"""Analiza esta imagen técnica para certificación EDGE (Medida: {hint_measure}).
-            Extrae toda la información técnica relevante (Watts, Lumens, Eficiencia, Marca, Modelo, Flujo, etc.).
-            Si es un plano, identifica áreas mencionadas.
+            prompt = f"""Analiza esta imagen técnica para certificación EDGE (Medida sugerida: {hint_measure}).
+            
+            PASO 1: Identificación del Plano (Cajetín/Title Block)
+            - Busca el Título del Plano (Drawing Title) y el Número de Plano (Drawing Number).
+            - Si dice 'DIAGRAMA UNIFILAR' o 'SINGLE LINE DIAGRAM', regístralo explícitamente.
+            
+            PASO 2: Extracción Técnica
+            - Si es un Diagrama Unifilar, busca los cuadros de cargas y extrae los Tableros de Alumbrado (Lighting Boards) con sus Watts totales.
+            - Si es una Ficha Técnica, extrae Watts, Lumens, Marca y Modelo.
+            
             Responde ÚNICAMENTE en formato JSON con esta estructura:
             {{
                 "classification": {{
                     "category_edge": "ENERGY/WATER/MATERIALS/DESIGN",
                     "measure_edge": "EEMXX/WEMXX/etc",
                     "doc_type": "ficha_tecnica/fotografia/plano",
-                    "confidence": 0.0-1.0
+                    "confidence": 0.0-1.0,
+                    "drawing_title": "string detectado en el cajetin"
                 }},
                 "extracted_parameters": {{
                     "watts": null,
                     "lumens": null,
                     "marca": "string",
-                    "modelo": "string",
-                    "flujo_lpm": null
+                    "modelo": "string"
                 }},
-                "detected_text": "Resumen del texto detectado",
+                "detected_text": "Resumen del texto detectado incluyendo palabras clave del cajetin",
                 "message": "Descripción de lo encontrado"
             }}"""
 

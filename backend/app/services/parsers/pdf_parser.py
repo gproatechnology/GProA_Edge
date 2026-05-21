@@ -43,6 +43,7 @@ class PDFParser(BaseParser):
                 "extracted_parameters": self._extract_technical_params(full_text),
                 "geometry": pages_data,
                 "tables": tables_data,
+                "content_text": full_text,
                 "text_summary": {
                     "total_chars": len(full_text),
                     "detected_areas_from_text": self._extract_areas_from_text(full_text, tables_data)

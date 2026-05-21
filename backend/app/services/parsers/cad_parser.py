@@ -63,13 +63,12 @@ class CADParser(BaseParser):
                     except: continue
 
             return {
-                "format": "DWG (Binary Inspected)",
-                "status": "partial",
-                "extracted_text_count": len(unique_strings),
-                "detected_context": found_keywords[:20], # Top 20 relevant strings
-                "message": "Archivo DWG inspeccionado mediante ingeniería binaria. Se extrajeron metadatos y etiquetas de texto.",
-                "entities": {"polylines": 0, "text_notes": len(unique_strings)},
-                "areas": detected_areas 
+                "content_text": " ".join(unique_strings),
+                "format": "DWG",
+                "detected_areas": detected_areas,
+                "found_keywords": found_keywords,
+                "metadata": {},
+                "extracted_parameters": {}
             }
         except Exception as e:
             return {"error": f"Heuristic scan failed: {str(e)}"}
@@ -185,6 +184,7 @@ class CADParser(BaseParser):
                         except: pass
 
             return {
+                "content_text": " ".join(text_content),
                 "format": "DXF",
                 "version": doc.dxfversion,
                 "units": unit_name,

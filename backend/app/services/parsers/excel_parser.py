@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 import logging
 import os
 from typing import Dict, Any, List
@@ -64,11 +65,22 @@ class ExcelParser(BaseParser):
             if "AREA" in filename_upper or "BREAKDOWN" in filename_upper:
                 suggested_category = "DESIGN"
 
+            # Build a plain-text representation of all sheets for AI consumption
+            text_lines = []
+            for sheet_name, sheet_info in sheets_data.items():
+                text_lines.append(f"=== Hoja: {sheet_name} ===")
+                for record in sheet_info["data_preview"]:
+                    row_str = "  |  ".join(f"{k}: {v}" for k, v in record.items() if v is not None and str(v).strip() not in ["", "nan", "None"])
+                    if row_str:
+                        text_lines.append(row_str)
+            content_text = "\n".join(text_lines)
+
             return {
                 "format": "XLSX",
                 "sheet_count": len(excel_file.sheet_names),
                 "sheets": list(excel_file.sheet_names),
                 "areas": found_areas,
+                "content_text": content_text,
                 "suggested_category": suggested_category,
                 "specialized_data": {
                     "tipo": "Desglose de Áreas (Excel)",

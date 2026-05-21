@@ -90,7 +90,8 @@ export default function ExtractedDataTab({ projectId, files, onRefresh }) {
 
   // Separate EEM22 files for special display
   const eem22Files = processedFiles.filter(
-    (f) => (f.measure_edge === "EEM22" || f.measure_edge === "EEM23") && f.specialized_data?.luminarias?.length > 0
+    (f) => (f.measure_edge === "EEM22" || f.measure_edge === "EEM23") && 
+           (f.specialized_data?.luminarias?.length > 0 || f.specialized_data?.tableros?.length > 0)
   );
 
   return (
@@ -308,37 +309,66 @@ export default function ExtractedDataTab({ projectId, files, onRefresh }) {
           {eem22Files.map((f) => {
             const sd = f.specialized_data;
             return (
-              <div key={f.id} className="mb-4">
-                <p className="text-xs text-muted-foreground mb-2">Fuente: {f.filename}</p>
+              <div key={f.id} className="mb-6 animate-fadeIn">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">Fuente: <span className="font-medium text-foreground">{f.filename}</span></p>
+                  {sd.classification?.drawing_title && (
+                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">
+                      {sd.classification.drawing_title}
+                    </span>
+                  )}
+                </div>
+
                 <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                  <table className="w-full data-table" data-testid={`luminaire-table-${f.id}`}>
-                    <thead>
-                      <tr className="bg-muted/50 border-b border-border">
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">ID</th>
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Modelo</th>
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Cant.</th>
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Lm</th>
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">W</th>
-                        <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Eficiencia</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {(sd.luminarias || []).map((lum, idx) => (
-                        <tr key={idx} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2 font-mono text-xs">{lum.id || "-"}</td>
-                          <td className="px-4 py-2 text-xs">{lum.modelo || "-"}</td>
-                          <td className="px-4 py-2 font-mono text-xs font-medium">{lum.cantidad || 0}</td>
-                          <td className="px-4 py-2 font-mono text-xs">{lum.lumens || 0}</td>
-                          <td className="px-4 py-2 font-mono text-xs">{lum.watts || 0}</td>
-                          <td className="px-4 py-2 font-mono text-xs">
-                            <span className={lum.eficiencia >= 90 ? "text-emerald-500 font-bold" : lum.eficiencia >= 60 ? "text-amber-500" : "text-red-500"}>
-                              {lum.eficiencia || 0}
-                            </span>
-                          </td>
+                  {sd.tipo_documento === "diagrama_unifilar" ? (
+                    <table className="w-full data-table">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border">
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Nombre Tablero</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Descripción / Servicio</th>
+                          <th className="px-4 py-2 text-right text-[10px] font-bold text-muted-foreground uppercase">Carga (Watts)</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {(sd.tableros || []).map((tab, idx) => (
+                          <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2 font-mono text-xs font-bold text-primary">{tab.nombre || "-"}</td>
+                            <td className="px-4 py-2 text-xs text-muted-foreground">{tab.descripcion || "Tablero de Alumbrado"}</td>
+                            <td className="px-4 py-2 text-right font-mono text-xs font-medium">{tab.watts?.toLocaleString() || 0} W</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full data-table" data-testid={`luminaire-table-${f.id}`}>
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border">
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">ID</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Modelo</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Cant.</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Lm</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">W</th>
+                          <th className="px-4 py-2 text-left text-[10px] font-bold text-muted-foreground uppercase">Eficiencia</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {(sd.luminarias || []).map((lum, idx) => (
+                          <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-2 font-mono text-xs">{lum.id || "-"}</td>
+                            <td className="px-4 py-2 text-xs">{lum.modelo || "-"}</td>
+                            <td className="px-4 py-2 font-mono text-xs font-medium">{lum.cantidad || 0}</td>
+                            <td className="px-4 py-2 font-mono text-xs">{lum.lumens || 0}</td>
+                            <td className="px-4 py-2 font-mono text-xs">{lum.watts || 0}</td>
+                            <td className="px-4 py-2 font-mono text-xs">
+                              <span className={lum.eficiencia >= 90 ? "text-emerald-500 font-bold" : lum.eficiencia >= 60 ? "text-amber-500" : "text-red-500"}>
+                                {lum.eficiencia || 0}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
                 {/* Summary */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">

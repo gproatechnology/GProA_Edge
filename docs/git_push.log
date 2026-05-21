@@ -400,3 +400,21 @@ Mensaje: Cargar datos donde ya extrae desde drive.
 Rama: submain
 Archivos: 35
 Resultado push: ÉXITO
+[2026-05-14 15:27:21] OK: Agregando todos los archivos
+
+[2026-05-14 15:27:42] OK: Creando commit
+
+[2026-05-14 15:27:47] OK: Sincronizando con remote
+
+[2026-05-14 15:28:27] OK: Subiendo a submain
+
+[2026-05-14 15:28:34] OK: Subiendo a submain
+
+
+=== INFORME FINAL ===
+Hash: 850d49d
+Fecha: Thu May 14 15:27:47 2026
+Mensaje: Merge branch 'submain' of https://github.com/gproatechnology/GProA_EOSIS_Edge into submain  * 'submain' of https://github.com/gproatechnology/GProA_EOSIS_Edge:   Update README for Gemini Flash integration 
+Rama: submain
+Archivos: 0
+Resultado push: ÉXITO

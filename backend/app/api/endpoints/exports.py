@@ -16,8 +16,14 @@ async def export_excel(project_id: str):
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
 
     files = await udb.files_find({"project_id": project_id}, {"content_text": 0})
+    import os
+    from openpyxl import load_workbook
 
-    wb = openpyxl.Workbook()
+    template_path = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "wbs_template.xlsx")
+    if os.path.exists(template_path):
+        wb = load_workbook(template_path)
+    else:
+        wb = openpyxl.Workbook()
     header_font = Font(bold=True, color="FFFFFF", size=10)
     header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
     thin_border = Border(
@@ -27,8 +33,39 @@ async def export_excel(project_id: str):
         bottom=Side(style='thin', color='E2E8F0'),
     )
 
-    ws = wb.active
-    ws.title = "Clasificacion EDGE"
+    processed_files = [f for f in files if f.get("status") == "processed"]
+    validation = validate_project_wbs(processed_files)
+
+    if "WBS_OUTPUT (No editar)" in wb.sheetnames and validation:
+        ws_out = wb["WBS_OUTPUT (No editar)"]
+        col_actividad = col_hpen_cs = col_hpen_pm = None
+        for col in range(1, ws_out.max_column + 1):
+            val = ws_out.cell(row=1, column=col).value
+            if val == "Actividad":
+                col_actividad = col
+            elif val == "HPen CS":
+                col_hpen_cs = col
+            elif val == "HPen PM":
+                col_hpen_pm = col
+        
+        if col_actividad and col_hpen_cs and col_hpen_pm:
+            for r in range(2, ws_out.max_row + 1):
+                actividad_val = str(ws_out.cell(row=r, column=col_actividad).value or "")
+                for measure, data in validation.items():
+                    if data.get("progreso", 0) == 1.0 and measure in actividad_val:
+                        ws_out.cell(row=r, column=col_hpen_cs, value=0)
+                        ws_out.cell(row=r, column=col_hpen_pm, value=0)
+
+    if "Clasificacion EDGE" in wb.sheetnames:
+        ws = wb["Clasificacion EDGE"]
+        ws.delete_rows(1, ws.max_row)
+    else:
+        if "Sheet" in wb.sheetnames and len(wb.sheetnames) == 1:
+            ws = wb["Sheet"]
+            ws.title = "Clasificacion EDGE"
+        else:
+            ws = wb.create_sheet("Clasificacion EDGE")
+
     headers = ["Archivo", "Categoria", "Medida", "Tipo Doc", "Confianza", "Watts", "Lumens", "Equipo", "Marca", "Modelo", "Estado"]
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
@@ -50,10 +87,12 @@ async def export_excel(project_id: str):
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 16
 
-    processed_files = [f for f in files if f.get("status") == "processed"]
-    validation = validate_project_wbs(processed_files)
     if validation:
-        ws2 = wb.create_sheet("Validacion WBS")
+        if "Validacion WBS" in wb.sheetnames:
+            ws2 = wb["Validacion WBS"]
+            ws2.delete_rows(1, ws2.max_row)
+        else:
+            ws2 = wb.create_sheet("Validacion WBS")
         headers2 = ["Medida", "Categoria", "Nombre", "Estado", "Progreso", "Docs Requeridos", "Docs Disponibles", "Faltantes"]
         for col, h in enumerate(headers2, 1):
             cell = ws2.cell(row=1, column=col, value=h)
@@ -81,25 +120,41 @@ async def export_excel(project_id: str):
             cell.fill = header_fill
         row = 2
         for f in eem22_files:
-            for lum in f["specialized_data"].get("luminarias", []):
-                ws3.cell(row=row, column=1, value=f["filename"]).border = thin_border
-                ws3.cell(row=row, column=2, value=lum.get("id", "")).border = thin_border
-                ws3.cell(row=row, column=3, value=lum.get("modelo", "")).border = thin_border
-                ws3.cell(row=row, column=4, value=lum.get("cantidad", 0)).border = thin_border
-                ws3.cell(row=row, column=5, value=lum.get("lumens", 0)).border = thin_border
-                ws3.cell(row=row, column=6, value=lum.get("watts", 0)).border = thin_border
-                ws3.cell(row=row, column=7, value=lum.get("eficiencia", 0)).border = thin_border
-                ws3.cell(row=row, column=8, value=lum.get("notas", "")).border = thin_border
-                row += 1
             sd = f["specialized_data"]
+            # Check if it's a unifilar diagram vs a luminaire catalog
+            if sd.get("tipo_documento") == "diagrama_unifilar":
+                for tab in sd.get("tableros", []):
+                    ws3.cell(row=row, column=1, value=f["filename"]).border = thin_border
+                    ws3.cell(row=row, column=2, value=tab.get("nombre", "")).border = thin_border
+                    ws3.cell(row=row, column=3, value=tab.get("descripcion", "Tablero de Alumbrado")).border = thin_border
+                    ws3.cell(row=row, column=4, value=1).border = thin_border
+                    ws3.cell(row=row, column=5, value="-").border = thin_border
+                    ws3.cell(row=row, column=6, value=tab.get("watts", 0)).border = thin_border
+                    ws3.cell(row=row, column=7, value="-").border = thin_border
+                    ws3.cell(row=row, column=8, value="Extraido de Unifilar").border = thin_border
+                    row += 1
+            else:
+                for lum in sd.get("luminarias", []):
+                    ws3.cell(row=row, column=1, value=f["filename"]).border = thin_border
+                    ws3.cell(row=row, column=2, value=lum.get("id", "")).border = thin_border
+                    ws3.cell(row=row, column=3, value=lum.get("modelo", "")).border = thin_border
+                    ws3.cell(row=row, column=4, value=lum.get("cantidad", 0)).border = thin_border
+                    ws3.cell(row=row, column=5, value=lum.get("lumens", 0)).border = thin_border
+                    ws3.cell(row=row, column=6, value=lum.get("watts", 0)).border = thin_border
+                    ws3.cell(row=row, column=7, value=lum.get("eficiencia", 0)).border = thin_border
+                    ws3.cell(row=row, column=8, value=lum.get("notas", "")).border = thin_border
+                    row += 1
+            
+            # Subtotal row for this file
             ws3.cell(row=row, column=1, value="").border = thin_border
-            ws3.cell(row=row, column=2, value="TOTAL").font = Font(bold=True)
-            ws3.cell(row=row, column=4, value=sd.get("total_luminarias", 0)).font = Font(bold=True)
-            ws3.cell(row=row, column=5, value=sd.get("total_lumens", 0)).font = Font(bold=True)
+            ws3.cell(row=row, column=2, value="TOTAL " + f["filename"]).font = Font(bold=True)
+            ws3.cell(row=row, column=4, value=sd.get("total_luminarias", "-")).font = Font(bold=True)
+            ws3.cell(row=row, column=5, value=sd.get("total_lumens", "-")).font = Font(bold=True)
             ws3.cell(row=row, column=6, value=sd.get("total_watts", 0)).font = Font(bold=True)
             eficacia = sd.get("eficacia_global", 0)
-            ws3.cell(row=row, column=7, value=eficacia).font = Font(bold=True, color="00AA00" if eficacia >= 90 else "FF0000")
-            row += 1
+            if eficacia > 0:
+                ws3.cell(row=row, column=7, value=eficacia).font = Font(bold=True, color="00AA00" if eficacia >= 90 else "FF0000")
+            row += 2
         for col in range(1, len(headers3) + 1):
             ws3.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 16
 

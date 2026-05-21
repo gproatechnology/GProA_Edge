@@ -15,19 +15,12 @@ logger = logging.getLogger(__name__)
 # ── MOCK PROCESSORS (Demo Mode) ────────────────────────────────────────
 
 def process_eem22_luminaires_mock(content: str) -> dict:
-    """Return mock EEM22 data for demo."""
+    """Return empty data if analysis fails."""
     return {
-        "luminarias": [
-            {"id": "L01", "modelo": "LED Panel 36W", "cantidad": 10, "lumens": 3600, "watts": 36, "eficiencia": 100.0, "notas": None},
-            {"id": "L02", "modelo": "LED Downlight 12W", "cantidad": 15, "lumens": 1200, "watts": 12, "eficiencia": 100.0, "notas": None},
-        ],
-        "alertas": [],
-        "luminarias_emergencia": 2,
-        "total_luminarias": 25,
-        "eficacia_global": 100.0,
-        "total_lumens": 57600,
-        "total_watts": 600,
-        "cumple_edge": True,
+        "luminarias": [],
+        "total_watts": 0,
+        "total_lumens": 0,
+        "mensaje": "No se encontraron luminarias detalladas en el documento."
     }
 
 def process_eem09_hvac_mock(content: str) -> dict:
@@ -160,8 +153,54 @@ Contenido del archivo:
         return data
     except (json.JSONDecodeError, Exception) as e:
         logger.error(f"EEM22 processor error: {e}")
-        return process_eem22_luminaires_mock(content)
+async def process_unifilar_diagram(content: str, api_key: str) -> dict:
+    """Specialized for Single Line Diagrams: Extract board loads."""
+    if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
+        return {"error": "API Key required for Unifilar analysis"}
 
+    prompt = f"""Analiza este DIAGRAMA UNIFILAR / CUADRO DE CARGAS y extrae los Tableros de Alumbrado (Lighting Panels).
+    
+    Para CADA tablero de alumbrado extrae:
+    - nombre: nombre del tablero (ej. TAB-AN1, TG-1)
+    - descripcion: que alimenta (alumbrado, fuerza, etc.)
+    - watts: carga total conectada en Watts (si esta en kVA, convierte a Watts multiplicando por 1000)
+    
+    Responde SOLO en JSON:
+    {{
+      "tipo_documento": "diagrama_unifilar",
+      "tableros": [
+        {{
+          "nombre": "string",
+          "descripcion": "string",
+          "watts": 0
+        }}
+      ],
+      "total_watts": 0,
+      "mensaje": "Resumen de carga extraido del diagrama unifilar."
+    }}
+    
+    Contenido:
+    {content[:5000]}"""
+
+    try:
+        config = types.GenerateContentConfig(
+            system_instruction="Eres un experto en ingenieria electrica. Tu objetivo es extraer el resumen de cargas de alumbrado de diagramas unifilares. Responde SOLO JSON.",
+            temperature=0.1,
+            response_mime_type="application/json"
+        )
+        response = await gemini_client.aio.models.generate_content(
+            model="gemini-1.5-pro",
+            contents=prompt,
+            config=config
+        )
+        data = json.loads(response.text.strip())
+        # Ensure total_watts is sum of boards if not provided
+        if not data.get("total_watts") and data.get("tableros"):
+            data["total_watts"] = sum(t.get("watts", 0) for t in data["tableros"])
+        return data
+    except Exception as e:
+        logger.error(f"Unifilar processor error: {e}")
+        return {"error": str(e), "total_watts": 0}
 
 async def process_eem09_hvac(content: str, api_key: str) -> dict:
     """EEM09 Specialized: Extract HVAC equipment data."""
@@ -379,9 +418,22 @@ MEASURE_PROCESSORS = {
 }
 
 
-async def run_specialized_processor(measure: str, content: str, api_key: str = None) -> dict:
+async def run_specialized_processor(measure: str, content: str, api_key: str = None, filename: str = "") -> dict:
     """Run the specialized processor for a given measure, if available."""
+    
+    # Check for Unifilar keywords in content OR filename
+    text_to_check = (content + " " + filename).upper()
+    unifilar_keywords = ["UNIFILAR", "DIAGRAMA UNIFILAR", "SINGLE LINE", "CUADRO DE CARGAS", "EL100", "EL200", "EL300"]
+    
+    if any(kw in text_to_check for kw in unifilar_keywords):
+        logger.info(f"Unifilar pattern detected in {filename}. Routing to specialized Unifilar processor.")
+        return await process_unifilar_diagram(content, api_key)
+
     processor = MEASURE_PROCESSORS.get(measure)
     if processor:
+        import inspect
+        sig = inspect.signature(processor)
+        if "measure" in sig.parameters:
+            return await processor(content, measure, api_key)
         return await processor(content, api_key)
     return None

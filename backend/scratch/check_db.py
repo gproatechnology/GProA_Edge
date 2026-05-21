@@ -1,19 +1,20 @@
-import sqlite3
-import json
+import asyncio
+import os
+import sys
 
-db_path = "c:/Users/X1/OneDrive/Documentos/Python_VS Code/GProA/GProA_EOSIS_Edge/backend/data/gproa_edge.db"
-conn = sqlite3.connect(db_path)
-cur = conn.cursor()
-cur.execute("SELECT project_id, filename, status FROM files ORDER BY uploaded_at DESC LIMIT 10")
-files = cur.fetchall()
-print("Recent files globally:")
-for f in files:
-    print(f)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from app.db.database import udb
 
-cur.execute("SELECT filename, status FROM files WHERE project_id='ceaebf11-b317-4d41-86cc-d64edcd1fbe3'")
-project_files = cur.fetchall()
-print("\nFiles for specific project (ceaebf11-b317-4d41-86cc-d64edcd1fbe3):")
-for f in project_files:
-    print(f)
+async def check_db():
+    await udb._ensure_sqlite()
+    files = await udb.files_find({})
+    
+    if not files:
+        print("La base de datos de archivos está completamente VACÍA.")
+    else:
+        print(f"Hay {len(files)} archivos en la base de datos:")
+        for f in files:
+            print(f"- {f.get('filename')} (Proyecto: {f.get('project_id')})")
 
-conn.close()
+if __name__ == "__main__":
+    asyncio.run(check_db())

@@ -93,14 +93,50 @@ export default function DataPreviewModal({ isOpen, onClose, file }) {
               )}
               {file.watts != null && (
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
-                  <span className="text-xs font-medium text-muted-foreground">Potencia (Watts)</span>
-                  <span className="text-sm font-mono font-bold text-foreground">{file.watts} W</span>
+                  <span className="text-xs font-medium text-muted-foreground">Potencia Instalada</span>
+                  <span className="text-sm font-mono font-bold text-foreground">{file.watts.toLocaleString()} W</span>
                 </div>
               )}
-              {(!file.consumption_kwh && !file.cost && !file.watts) && (
-                <div className="py-8 text-center bg-muted/20 rounded-2xl border border-dashed border-border">
-                   <p className="text-xs text-muted-foreground italic">No se detectaron métricas numéricas adicionales en este documento.</p>
+            </div>
+          </div>
+
+          {/* Traceability Section */}
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-1">Trazabilidad y Origen</p>
+            <div className="p-5 bg-primary/5 border border-primary/20 rounded-2xl space-y-4">
+              {file.specialized_data?.classification?.drawing_title && (
+                <div>
+                  <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">Título detectado en Cajetín</p>
+                  <p className="text-sm font-bold text-foreground uppercase italic border-l-2 border-primary pl-3">
+                    "{file.specialized_data.classification.drawing_title}"
+                  </p>
                 </div>
+              )}
+              
+              {file.specialized_data?.mensaje && (
+                <div>
+                  <p className="text-[10px] font-bold text-primary/60 uppercase mb-1">Razonamiento de la IA</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {file.specialized_data.mensaje}
+                  </p>
+                </div>
+              )}
+
+              {file.specialized_data?.tableros?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-primary/60 uppercase mb-2">Fuentes de carga (Tableros)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {file.specialized_data.tableros.map((t, i) => (
+                      <span key={i} className="px-2 py-1 bg-background border border-border rounded-lg text-[10px] font-mono">
+                        {t.nombre}: <span className="text-primary font-bold">{t.watts}W</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {!file.specialized_data?.mensaje && !file.specialized_data?.classification?.drawing_title && (
+                <p className="text-xs text-muted-foreground italic">No hay datos de trazabilidad adicionales para este documento.</p>
               )}
             </div>
           </div>
