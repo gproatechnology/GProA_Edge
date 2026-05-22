@@ -58,7 +58,7 @@ class PDFParser(BaseParser):
         try:
             doc = fitz.open(file_path)
             return doc.metadata
-        except:
+        except Exception:
             return {}
 
     def _extract_technical_params(self, text: str) -> Dict[str, Any]:

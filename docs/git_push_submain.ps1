@@ -1,24 +1,24 @@
 <#
 .SYNOPSIS
-    GProA EDGE - Git Auto-Push a la rama submain
+    GProA EDGE - Git Auto-Push a la rama tech-debt
 .DESCRIPTION
-    Este script automatiza el proceso de commit y push en la rama 'submain'.
+    Este script automatiza el proceso de commit y push en la rama 'tech-debt'.
     Incluye validaciones, opción de seleccionar archivos y manejo de conflictos.
 .NOTES
     Requiere: git instalado y configurado en el PATH.
 #>
 
 # ================= CONFIGURACIÓN =================
-$BRANCH_NAME = "submain"
+$BRANCH_NAME = "tech-debt"
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ROOT_DIR = Split-Path -Parent $SCRIPT_DIR
 $LOG_FILE = Join-Path $SCRIPT_DIR "git_push.log"
 
 # ================= FUNCIONES DE UI =================
 function Write-Success { Write-Host "[OK] $($args[0])" -ForegroundColor Green }
-function Write-Error   { Write-Host "[ERROR] $($args[0])" -ForegroundColor Red }
+function Write-Error { Write-Host "[ERROR] $($args[0])" -ForegroundColor Red }
 function Write-Warning { Write-Host "[WARN] $($args[0])" -ForegroundColor Yellow }
-function Write-Info    { Write-Host "[INFO] $($args[0])" -ForegroundColor Cyan }
+function Write-Info { Write-Host "[INFO] $($args[0])" -ForegroundColor Cyan }
 
 function Show-Banner {
     Write-Host ("=" * 60) -ForegroundColor Cyan
@@ -31,7 +31,8 @@ function Test-GitInstalled {
     try {
         $null = git --version 2>&1
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -40,7 +41,8 @@ function Test-GitRepository {
     try {
         $null = git rev-parse --git-dir 2>&1
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -61,7 +63,8 @@ function Invoke-GitWithLog($command, $actionDescription) {
         $logEntry = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: $actionDescription`n$output`n"
         Add-Content -Path $LOG_FILE -Value $logEntry
         return $false
-    } else {
+    }
+    else {
         if ($output) { Write-Host $output -ForegroundColor Gray }
         # Registrar en log
         $logEntry = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] OK: $actionDescription`n"
@@ -95,18 +98,27 @@ Write-Host "`nEstado actual del repositorio:" -ForegroundColor Yellow
 git status -s
 if ($LASTEXITCODE -ne 0) { git status }
 
-# 4. Verificar rama actual
+# 4. Verificar rama actual y crearla si no existe
 $currentBranch = Get-CurrentBranch
 if ($currentBranch -ne $BRANCH_NAME) {
     Write-Warning "Estás en la rama '$currentBranch', no en '$BRANCH_NAME'."
-    $resp = Read-Host "¿Cambiar a la rama '$BRANCH_NAME'? (s/N)"
+    $resp = Read-Host "¿Intentar cambiar a (o crear) la rama '$BRANCH_NAME'? (s/N)"
+    
     if ($resp -eq 's') {
-        if (-not (Invoke-GitWithLog "git checkout $BRANCH_NAME" "Cambiando a rama $BRANCH_NAME")) {
-            Pop-Location
-            Read-Host "Presiona Enter para salir"
-            exit 1
+        # Intentamos cambiar primero
+        # Usamos 'git checkout -b' si no existe, o 'git checkout' si ya existe
+        $checkBranch = Invoke-GitWithLog "git checkout $BRANCH_NAME" "Cambiando a rama $BRANCH_NAME"
+        
+        if (-not $checkBranch) {
+            Write-Info "La rama no existe localmente, intentando crearla..."
+            if (-not (Invoke-GitWithLog "git checkout -b $BRANCH_NAME" "Creando rama $BRANCH_NAME")) {
+                Pop-Location
+                Read-Host "Presiona Enter para salir"
+                exit 1
+            }
         }
-    } else {
+    }
+    else {
         Write-Error "Operación cancelada. Debes estar en la rama $BRANCH_NAME para continuar."
         Pop-Location
         Read-Host "Presiona Enter para salir"
@@ -121,7 +133,8 @@ if (-not $changes) {
     Pop-Location
     Read-Host "Presiona Enter para salir"
     exit 0
-} else {
+}
+else {
     Write-Host "`nCambios detectados:" -ForegroundColor Yellow
     Write-Host $changes -ForegroundColor Gray
 }
@@ -217,7 +230,8 @@ if ($fileCount -gt 0 -and $fileCount -le 20) {
     foreach ($file in $commitFiles) {
         Write-Host "  - $file" -ForegroundColor Gray
     }
-} elseif ($fileCount -gt 20) {
+}
+elseif ($fileCount -gt 20) {
     Write-Host "`n(Más de 20 archivos. Para ver la lista completa, ejecuta 'git show --name-only')" -ForegroundColor DarkGray
 }
 
@@ -230,7 +244,8 @@ Write-Host ""
 if ($pushResult) {
     Write-Host ("=" * 60) -ForegroundColor Green
     Write-Success "Cambios subidos exitosamente a la rama '$BRANCH_NAME'."
-} else {
+}
+else {
     Write-Host ("=" * 60) -ForegroundColor Red
     Write-Error "Hubo un problema al subir los cambios. Revisa los mensajes anteriores."
 }

@@ -250,6 +250,22 @@ def get_measures_by_category(category: str) -> dict:
     return {k: v for k, v in EDGE_WBS.items() if v["categoria"] == category}
 
 
+def detect_measure(filename: str) -> str:
+    """Heuristic to detect EDGE measure from filename — shared across services."""
+    fn = filename.upper()
+    # ── Patrones de hoja de plano (A-series) ─────────────────────────────────
+    if "A700" in fn:      return "A700"
+    if "A250" in fn:      return "A250"
+    # ── Medidas EDGE por nombre o keyword ────────────────────────────────────
+    if "EEM22" in fn or "LUM" in fn or "LIGHT" in fn or "EL1" in fn or "EL2" in fn or "EL3" in fn or "EL7" in fn: return "EEM22"
+    if "EEM01" in fn or "WWR" in fn or "WINDOW" in fn: return "EEM01"
+    if "EEM09" in fn or "HVAC" in fn or "AIRE" in fn: return "EEM09"
+    if "WEM01" in fn or "GRIF" in fn or "SHOWER" in fn: return "WEM01"
+    if "WEM02" in fn or "WC" in fn or "TOILET" in fn: return "WEM02"
+    if "EEM16" in fn or "SOLAR" in fn or "RENEW" in fn: return "EEM16"
+    return "GENERAL"
+
+
 def validate_project_wbs(files: list) -> dict:
     """Deterministic WBS validation: cross-reference files vs requirements."""
     # Group files by measure

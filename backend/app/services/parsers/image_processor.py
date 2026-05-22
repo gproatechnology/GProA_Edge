@@ -78,7 +78,7 @@ class ImageProcessor:
             )
 
             response = await gemini_client.aio.models.generate_content(
-                model="gemini-1.5-pro",
+                model="gemini-2.5-flash",
                 contents=[prompt, image_part],
                 config=config
             )

@@ -9,7 +9,6 @@ google-genai
 ezdxf
 pdfplumber
 openpyxl
-xlrd
 aiohttp
 pydantic
 jinja2

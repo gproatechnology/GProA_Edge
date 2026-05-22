@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 import uuid
 import asyncio
 from datetime import datetime, timezone
 import logging
 from app.db.database import udb
 from app.services.ai_service import processing_jobs, process_single_file_pipeline
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -171,3 +172,28 @@ async def process_single_file(file_id: str):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     result = await process_single_file_pipeline(f)
     return result
+
+
+_CONCURRENCY_LIMIT = 3
+
+
+@router.post("/processing/batch")
+async def process_batch(project_id: str, background_tasks: BackgroundTasks):
+    files = await udb.files_find({"project_id": project_id, "status": "pending"})
+    if not files:
+        return {"processed": 0, "message": "No pending files"}
+
+    semaphore = asyncio.Semaphore(_CONCURRENCY_LIMIT)
+
+    async def _schedule(file_id: str):
+        async with semaphore:
+            try:
+                await AuditService.process_file(file_id)
+            except Exception as exc:
+                logger.error(f"File {file_id} failed: {exc}")
+
+    def _dispatch():
+        asyncio.run(asyncio.gather(*[_schedule(f["id"]) for f in files]))
+
+    background_tasks.add_task(_dispatch)
+    return {"processed": len(files), "status": "scheduled", "concurrency": _CONCURRENCY_LIMIT}

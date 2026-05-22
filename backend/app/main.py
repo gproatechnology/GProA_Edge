@@ -4,17 +4,24 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
-from app.core.config import ROOT_DIR, MONGO_URL, logger
+from app.core.config import ROOT_DIR, MONGO_URL, logger, CORS_ORIGINS
 from app.db.database import udb, client
 from app.api.api_router import api_router
 
 app = FastAPI(title="EDGE Document Processor API v2")
 
-# Setup CORS - Permisivo para desarrollo
+# Setup CORS - Read from environment
+if CORS_ORIGINS and CORS_ORIGINS != "*":
+    origins = [o.strip() for o in CORS_ORIGINS.split(",")]
+elif CORS_ORIGINS == "*":
+    origins = ["*"]
+else:
+    origins = ["http://localhost:3000"]  # Default dev origin
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -59,7 +66,6 @@ if frontend_build_dir.exists():
         except Exception as e:
             return {"error": f"Internal server error: {str(e)}"}, 500
 else:
-    logger.warning("Frontend build directory not found. API only mode.")
     logger.warning("Frontend build directory not found. API only mode.")
 
 @app.on_event("shutdown")

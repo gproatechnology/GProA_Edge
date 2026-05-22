@@ -36,7 +36,7 @@ async def list_projects():
             status = await get_edge_status(project_id)
             p["priority"] = "Crítica" if len(status["faltantes"]) > 3 else "Alta" if len(status["faltantes"]) > 0 else "Baja"
             p["efficiency"] = status["savings"]["energy"]
-        except:
+        except Exception:
             p["priority"] = p.get("priority", "Baja")
             p["efficiency"] = 0
 
@@ -61,7 +61,7 @@ async def get_project(project_id: str):
         status = await get_edge_status(project_id)
         project["priority"] = "Crítica" if len(status["faltantes"]) > 3 else "Alta" if len(status["faltantes"]) > 0 else "Baja"
         project["efficiency"] = status["savings"]["energy"]
-    except:
+    except Exception:
         pass
 
     project["file_count"] = file_count

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from app.core.config import gemini_client, GEMINI_API_KEY
-from app.services.edge_rules import EDGE_WBS
+from app.services.edge_rules import EDGE_WBS, detect_measure
 from app.db.database import udb
 
 # Deterministic Parsers
@@ -146,6 +146,8 @@ async def extract_data(content: str, measure: str = "") -> dict:
 
 async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> dict:
     """Full processing pipeline for a single file."""
+    import asyncio
+    
     content = file_doc.get("content_text", "")
     filename = file_doc.get("filename", "")
     file_id = file_doc["id"]
@@ -163,7 +165,6 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
 
     try:
         # 1. DETERMINISTIC PARSING & IMAGE ANALYSIS
-        import asyncio
         det_data = None
         if file_path and os.path.exists(file_path):
             if ext in ['dxf', 'dwg']:
@@ -207,13 +208,12 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
             })
 
         # --- STRICT FILENAME OVERRIDE ---
-        from app.services.audit_service import AuditService
-        strict_measure = AuditService.detect_measure(filename)
+        strict_measure = detect_measure(filename)        
         if strict_measure != "GENERAL":
             update["measure_edge"] = strict_measure
             if strict_measure.startswith("EEM") or strict_measure.startswith("WEM"):
                 update["category_edge"] = "ENERGY"
-                
+
         # 3. DATA EXTRACTION
         measure = update.get("measure_edge", "")
         final_params = {}

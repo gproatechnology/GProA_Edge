@@ -33,7 +33,7 @@ class UnifiedDB:
     async def _ensure_sqlite(self):
         """Initialize SQLite connection and schema on first use."""
         if self.conn is None:
-            print(">>> Initializing SQLite connection...")
+            logger.info("Initializing SQLite connection...")
             self.conn = await aiosqlite.connect(self.sqlite_path)
             self.conn.row_factory = aiosqlite.Row
             await self.conn.execute("""
@@ -62,15 +62,15 @@ class UnifiedDB:
             for col, col_type in new_cols:
                 try:
                     await self.conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {col_type}")
-                except:
-                    pass # La columna ya existe
+                except Exception:
+                    pass  # Column already exists or other SQLite error
             
             # Files
             for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT")]:
                 try:
                     await self.conn.execute(f"ALTER TABLE files ADD COLUMN {col} {col_type}")
-                except:
-                    pass # La columna ya existe
+                except Exception:
+                    pass  # Column already exists or other SQLite error
 
             await self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS google_tokens (
@@ -90,7 +90,7 @@ class UnifiedDB:
                 )
             """)
             await self.conn.commit()
-            print(">>> SQLite database ready")
+            logger.info("SQLite database ready")
 
     async def projects_insert_one(self, doc: dict):
         if self.mode == "mongodb":
@@ -263,12 +263,12 @@ class UnifiedDB:
         if "areas" in row and row["areas"]:
             try:
                 row["areas"] = json.loads(row["areas"])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 row["areas"] = None
         if "specialized_data" in row and row["specialized_data"]:
             try:
                 row["specialized_data"] = json.loads(row["specialized_data"])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 row["specialized_data"] = None
         return row
 

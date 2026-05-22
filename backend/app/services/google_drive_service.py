@@ -20,6 +20,14 @@ SCOPES = [
     'openid'
 ]
 
+# ── Background task tracker — prevents GC while tasks are running ───────────
+_background_tasks: set = set()
+
+
+def _discard_task(task: "asyncio.Task") -> None:
+    """Callback executed when a background task finishes — removes it from the set."""
+    _background_tasks.discard(task)
+
 class GoogleDriveService:
     def __init__(self):
         self.creds_path = ROOT_DIR / 'data' / 'credentials.json'
@@ -184,12 +192,14 @@ class GoogleDriveService:
                     }
                     await udb.files_insert_one(file_doc)
                     
-                    # 2. Trigger Audit (Background-ish)
+                    # 2. Trigger Audit (Background-ish — task tracked to prevent GC)
                     try:
                         import asyncio
                         from app.services.audit_service import audit_service
                         # Lanza la auditoría en segundo plano para no bloquear el retorno del API
-                        asyncio.create_task(audit_service.process_file(file_id))
+                        task = asyncio.create_task(audit_service.process_file(file_id))
+                        _background_tasks.add(task)
+                        task.add_done_callback(_discard_task)
                     except Exception as e:
                         logger.error(f"Post-sync audit failed for {file['name']}: {e}")
                     

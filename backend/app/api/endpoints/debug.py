@@ -1,12 +1,24 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import uuid
 from datetime import datetime, timezone
 from app.db.database import udb
+from app.core.config import DEMO_MODE
 
 router = APIRouter()
 
+
+def _require_debug_mode():
+    """Bloquea endpoints de debug si DEBUG no está activo."""
+    if not DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Debug endpoints are disabled when DEMO_MODE is false."
+        )
+
+
 @router.post("/seed")
 async def seed_data():
+    _require_debug_mode()
     # ------------------------------------------------------------
     # 1. PROYECTOS (10 proyectos variados)
     # ------------------------------------------------------------
@@ -317,6 +329,7 @@ async def seed_data():
 
 @router.post("/clear")
 async def clear_data():
+    _require_debug_mode()
     if udb.mode == "sqlite":
         await udb._ensure_sqlite()
         await udb.conn.execute("DELETE FROM projects")

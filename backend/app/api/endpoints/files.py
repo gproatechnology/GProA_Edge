@@ -36,7 +36,7 @@ async def upload_file(project_id: str, file: UploadFile = File(...)):
     if ext in ["txt", "csv", "json", "md"]:
         try:
             text_content = content_bytes.decode("utf-8")
-        except:
+        except UnicodeDecodeError:
             text_content = content_bytes.decode("latin-1", errors="ignore")
     elif ext == "pdf":
         # Placeholder for PDF text extraction if needed during upload

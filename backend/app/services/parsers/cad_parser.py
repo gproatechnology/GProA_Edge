@@ -85,7 +85,7 @@ class CADParser(BaseParser):
                 with open(file_path, 'r', encoding='ascii', errors='ignore') as f:
                     if "SECTION" in f.read(100):
                         return self._parse_dxf(file_path)
-            except:
+            except Exception:
                 pass
             
             # If true binary DWG, use heuristic inspection
@@ -218,7 +218,7 @@ class CADParser(BaseParser):
                 "author": doc.header.get("$PROJECTNAME", "Desconocido"),
                 "units": doc.header.get("$INSUNITS", "Sin definir")
             }
-        except:
+        except Exception:
             return {}
 
     def _get_layers(self, doc) -> List[str]:

@@ -66,5 +66,5 @@ class DocxParser(BaseParser):
                 "title": prop.title,
                 "version": prop.version
             }
-        except:
+        except Exception:
             return {}

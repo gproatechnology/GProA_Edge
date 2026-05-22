@@ -12,11 +12,14 @@ logger = logging.getLogger(__name__)
 
 # Database Config
 MONGO_URL = os.getenv('MONGO_URL')
-DB_NAME = os.getenv('DB_NAME', 'gproa_edge')
+DB_NAME = os.getenv('DB_NAME', 'gproa_unified')
 
 # Gemini Config
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') or os.getenv('EMERGENT_LLM_KEY')
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+
+# CORS Config
+CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000')
 
 # Google Drive Config (Placeholder for future sync)
 GOOGLE_DRIVE_CREDENTIALS = os.getenv('GOOGLE_DRIVE_CREDENTIALS')  # JSON string or path to file
