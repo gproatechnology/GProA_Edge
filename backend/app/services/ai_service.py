@@ -3,7 +3,11 @@ import logging
 import os
 from app.core.config import gemini_client, GEMINI_API_KEY
 from app.services.edge_rules import EDGE_WBS, detect_measure
+from app.services.llm.routing import LLMRouter, TaskType
 from app.db.database import udb
+
+# Initialize LLM router
+llm_router = LLMRouter()
 
 # Deterministic Parsers
 from app.services.parsers.cad_parser import CADParser
@@ -70,45 +74,19 @@ def extract_data_mock(content: str, measure: str = "") -> dict:
         data["tipo_equipo"] = "Luminaria LED"
     return data
 
-# ── AI Processing Functions ─────────────────────────────────────────────
+# ── AI Processing Functions (Using LLM Router) ─────────────────────────────
 
 async def classify_file(content: str, filename: str = "") -> dict:
-    """Classify file using Gemini or mock."""
+    """Classify file using the LLM router (Ollama/Gemini) or mock."""
     if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return classify_file_mock(content, filename)
     
     try:
-        from google.genai import types
-        # Prompt mejorado para considerar medidas específicas de EDGE
-        prompt = f"""Clasifica este archivo técnico de construcción para certificación EDGE.
-        Nombre del archivo: {filename}
-        
-        Categorías EDGE: ENERGY, WATER, MATERIALS, DESIGN.
-        Tipos de documento: ficha_tecnica, plano, memoria, factura, fotografia.
-        
-        Responde ÚNICAMENTE en JSON:
-        {{
-            "category_edge": "string",
-            "measure_edge": "EEMXX/WEMXX/etc",
-            "doc_type": "string",
-            "confidence": 0.0-1.0
-        }}
-        """
-        
-        config = types.GenerateContentConfig(
-            temperature=0.3,
-            response_mime_type="application/json"
-        )
-        
-        response = await gemini_client.aio.models.generate_content(
-            model="gemini-flash-latest",
-            contents=prompt + "\n\nContenido parcial:\n" + content[:2000],
-            config=config
-        )
-        
-        return json.loads(response.text.strip())
+        # Use the LLM router to get the appropriate provider for classification
+        provider = llm_router.route(TaskType.CLASSIFICATION)
+        return await provider.classify(content)
     except Exception as e:
-        logger.error(f"Gemini classify error: {e}")
+        logger.error(f"LLM classification error: {e}")
         return classify_file_mock(content, filename)
 
 async def extract_data(content: str, measure: str = "") -> dict:
@@ -127,21 +105,14 @@ async def extract_data(content: str, measure: str = "") -> dict:
         Responde ÚNICAMENTE en JSON con los valores encontrados (usa null si no se encuentra).
         """
         
-        from google.genai import types
-        config = types.GenerateContentConfig(
-            temperature=0.1,
-            response_mime_type="application/json"
-        )
+        # Use the LLM router to get the appropriate provider for data extraction
+        # We'll use CLASSIFICATION task type for extraction as well for now
+        provider = llm_router.route(TaskType.CLASSIFICATION)
+        response = await provider.generate_json(prompt + "\n\nTexto:\n" + content[:2000])
         
-        response = await gemini_client.aio.models.generate_content(
-            model="gemini-flash-latest",
-            contents=prompt + "\n\nTexto:\n" + content[:4000],
-            config=config
-        )
-        
-        return json.loads(response.text.strip())
+        return response
     except Exception as e:
-        logger.error(f"Gemini extract error: {e}")
+        logger.error(f"LLM extract error: {e}")
         return extract_data_mock(content, measure)
 
 async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> dict:
@@ -252,12 +223,44 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
             # --- SPECIALIZED EDGE EXTRACTION ---
             from app.services.edge_processors import run_specialized_processor
             from app.core.config import GEMINI_API_KEY
+            
+            # Read PDF bytes if needed for unifilar processing
+            pdf_bytes = None
+            if ext == 'pdf' and file_path and os.path.exists(file_path):
+                try:
+                    with open(file_path, 'rb') as f:
+                        pdf_bytes = f.read()
+                except Exception as read_err:
+                    logger.warning(f"Could not read PDF bytes for unifilar processing: {read_err}")
+            
             if measure != "GENERAL" and measure != "DESIGN":
-                spec_data = await run_specialized_processor(measure, ai_text, GEMINI_API_KEY, filename)
+                # Check if master processor should be used (EEM22M)
+                file_paths = {}
+                if measure in ["EEM22", "EEM22M"]:
+                    # Collect all related plan files for cross-validation
+                    base_path = os.path.dirname(file_path) if file_path else ""
+                    for plan in ["EL300", "EL103", "EL100", "EL102"]:
+                        plan_file = os.path.join(base_path, f"24044{plan}.pdf")
+                        if os.path.exists(plan_file):
+                            file_paths[plan] = plan_file
+                
+                spec_data = await run_specialized_processor(
+                    measure, ai_text, GEMINI_API_KEY, filename, 
+                    pdf_bytes=pdf_bytes,
+                    file_path=file_path, file_paths=file_paths if file_paths else None
+                )
                 if spec_data and "error" not in spec_data:
                     update["specialized_data"] = spec_data
                     if "total_watts" in spec_data: final_params["watts"] = spec_data["total_watts"]
                     if "total_lumens" in spec_data: final_params["lumens"] = spec_data["total_lumens"]
+            
+            # Handle DESIGN/AREA_BREAKDOWN separately
+            if measure == "AREA_BREAKDOWN" or (measure == "DESIGN" and "AREA" in filename.upper()):
+                spec_data = await run_specialized_processor(
+                    "AREA_BREAKDOWN", ai_text, GEMINI_API_KEY, filename, file_path=file_path
+                )
+                if spec_data and "error" not in spec_data:
+                    update["specialized_data"] = spec_data
 
             if ai_text and not final_params:
                 ai_params = await extract_data(ai_text, measure)

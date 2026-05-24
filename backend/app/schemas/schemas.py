@@ -41,6 +41,7 @@ class FileResponse(BaseModel):
     consumption_kwh: Optional[float] = None
     cost: Optional[float] = None
     uploaded_at: str
+    error_msg: Optional[str] = None
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     typology: Optional[str] = None

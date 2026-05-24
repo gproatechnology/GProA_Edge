@@ -263,6 +263,8 @@ def detect_measure(filename: str) -> str:
     if "WEM01" in fn or "GRIF" in fn or "SHOWER" in fn: return "WEM01"
     if "WEM02" in fn or "WC" in fn or "TOILET" in fn: return "WEM02"
     if "EEM16" in fn or "SOLAR" in fn or "RENEW" in fn: return "EEM16"
+    # ── Area Breakdown Layout ───────────────────────────────────────────────
+    if "AREA BREAKDOWN" in fn or "AREA_BREAKDOWN" in fn or ("TRISTONE" in fn and "LAYOUT" in fn): return "AREA_BREAKDOWN"
     return "GENERAL"
 
 

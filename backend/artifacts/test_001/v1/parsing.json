@@ -1,0 +1,23 @@
+{
+  "parsed": [
+    {
+      "file": "dummy.dxf",
+      "result": {
+        "measure": "DESIGN",
+        "discipline": "architectural",
+        "entities": [],
+        "relationships": [],
+        "calculations": {},
+        "warnings": [],
+        "confidence": 0.99,
+        "source_metadata": {
+          "layers": [],
+          "units": null,
+          "version": null,
+          "dimension_count": 0
+        }
+      }
+    }
+  ],
+  "count": 1
+}

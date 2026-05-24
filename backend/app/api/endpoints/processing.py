@@ -10,26 +10,68 @@ from app.services.audit_service import AuditService
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+@router.post("/projects/{project_id}/pipeline")
+async def run_pipeline(project_id: str):
+    """Run the full deterministic pipeline for EDGE processing."""
+    from app.services.pipeline import ProcessingPipeline
+    
+    files = await udb.files_find({"project_id": project_id})
+    if not files:
+        raise HTTPException(status_code=404, detail="No files found for project")
+    
+    file_list = [{"path": f.get("path", ""), "type": f.get("type", "dxf")} for f in files]
+    
+    pipeline = ProcessingPipeline(project_id=project_id, revision="v1")
+    result = await pipeline.run(file_list)
+    
+    return result
+
+
+@router.get("/projects/{project_id}/artifacts")
+async def list_artifacts(project_id: str):
+    """List persisted artifacts for a project."""
+    from app.services.pipeline.artifacts import artifact_store
+    return {"project_id": project_id, "artifacts": artifact_store.list_artifacts(project_id)}
+
 async def _run_batch_processing(job_id: str, files: list):
     job = processing_jobs[job_id]
-    try:
-        for i, f in enumerate(files):
-            job["current_file"] = f["filename"]
-            job["current_step"] = f"Clasificando ({i+1}/{len(files)})"
-            job["processed"] = i
+    
+    # Procesar hasta 5 archivos de manera concurrente para no saturar CPU/Memoria ni los rate limits de Gemini
+    semaphore = asyncio.Semaphore(5)
+    job["processed"] = 0
+    
+    async def process_file(i, f):
+        async with semaphore:
+            try:
+                job["current_file"] = f.get("filename", "unknown")
+                job["current_step"] = f"Procesando concurrentemente: {f.get('filename', 'unknown')}"
+                logger.info(f"[{job_id}] Starting file {i+1}/{len(files)}: {f.get('filename')}")
+                
+                # Aumentamos el timeout a 120s porque al paralelizar, la CPU se divide y un archivo puede demorar un poco mas en terminos absolutos
+                result = await asyncio.wait_for(
+                    process_single_file_pipeline(f, job_id),
+                    timeout=120.0
+                )
+                logger.info(f"[{job_id}] Completed file {i+1}/{len(files)}: {f.get('filename')}")
+            except asyncio.TimeoutError:
+                logger.error(f"[{job_id}] Timeout processing file {f.get('filename')}")
+                await udb.files_update_one({"id": f.get("id")}, {"$set": {"status": "error", "error_msg": "Timeout"}})
+            except Exception as e:
+                logger.error(f"[{job_id}] Error processing file {f.get('filename')}: {e}")
+                await udb.files_update_one({"id": f.get("id")}, {"$set": {"status": "error", "error_msg": str(e)}})
+            finally:
+                job["processed"] += 1
 
-            result = await process_single_file_pipeline(f, job_id)
-            job["results"].append(result)
-
-        job["status"] = "completed"
-        job["processed"] = len(files)
-        job["current_step"] = "Completado"
-        job["current_file"] = ""
-        job["completed_at"] = datetime.now(timezone.utc).isoformat()
-    except Exception as e:
-        logger.error(f"Batch processing error: {e}")
-        job["status"] = "error"
-        job["current_step"] = f"Error: {str(e)}"
+    # Lanzar todas las tareas de procesamiento
+    tasks = [process_file(i, f) for i, f in enumerate(files)]
+    await asyncio.gather(*tasks)
+    
+    job["status"] = "completed"
+    job["current_step"] = "Completado"
+    job["current_file"] = ""
+    job["completed_at"] = datetime.now(timezone.utc).isoformat()
+    logger.info(f"[{job_id}] Batch completed")
 
 
 @router.post("/projects/{project_id}/process-edge")
@@ -158,10 +200,14 @@ async def process_project_files(project_id: str):
     if not files:
         raise HTTPException(status_code=400, detail="No hay archivos pendientes de procesar")
 
-    results = []
-    for f in files:
-        result = await process_single_file_pipeline(f)
-        results.append(result)
+    semaphore = asyncio.Semaphore(5)
+    async def _process_with_semaphore(f):
+        async with semaphore:
+            return await process_single_file_pipeline(f)
+
+    tasks = [_process_with_semaphore(f) for f in files]
+    results = await asyncio.gather(*tasks)
+    
     return {"processed": len(results), "results": results}
 
 
@@ -174,7 +220,7 @@ async def process_single_file(file_id: str):
     return result
 
 
-_CONCURRENCY_LIMIT = 3
+_CONCURRENCY_LIMIT = 10
 
 
 @router.post("/processing/batch")

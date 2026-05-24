@@ -66,7 +66,7 @@ class UnifiedDB:
                     pass  # Column already exists or other SQLite error
             
             # Files
-            for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT")]:
+            for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT"), ("error_msg", "TEXT")]:
                 try:
                     await self.conn.execute(f"ALTER TABLE files ADD COLUMN {col} {col_type}")
                 except Exception:
@@ -201,8 +201,8 @@ class UnifiedDB:
                     id, project_id, filename, file_size, content_text, status,
                     category_edge, measure_edge, doc_type, confidence,
                     watts, lumens, tipo_equipo, marca, modelo,
-                    areas, specialized_data, uploaded_at, cost, consumption_kwh, file_path
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    areas, specialized_data, uploaded_at, cost, consumption_kwh, file_path, error_msg
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 doc["id"], doc["project_id"], doc["filename"], doc["file_size"],
                 doc.get("content_text"), doc.get("status", "pending"),
@@ -211,7 +211,7 @@ class UnifiedDB:
                 doc.get("watts"), doc.get("lumens"), doc.get("tipo_equipo"),
                 doc.get("marca"), doc.get("modelo"),
                 areas, specialized, doc.get("uploaded_at"),
-                doc.get("cost"), doc.get("consumption_kwh"), doc.get("file_path")
+                doc.get("cost"), doc.get("consumption_kwh"), doc.get("file_path"), doc.get("error_msg")
             ))
             await self.conn.commit()
 
@@ -224,7 +224,7 @@ class UnifiedDB:
             columns = ["id", "project_id", "filename", "file_size", "content_text", "status",
                        "category_edge", "measure_edge", "doc_type", "confidence",
                        "watts", "lumens", "tipo_equipo", "marca", "modelo",
-                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path"]
+                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path", "error_msg"]
             if projection and "content_text" in projection and projection["content_text"] == 0:
                 columns = [c for c in columns if c != "content_text"]
             where = [f"{k}=?" for k in query.keys()]
@@ -246,7 +246,7 @@ class UnifiedDB:
             columns = ["id", "project_id", "filename", "file_size", "status",
                        "category_edge", "measure_edge", "doc_type", "confidence",
                        "watts", "lumens", "tipo_equipo", "marca", "modelo",
-                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path"]
+                       "areas", "specialized_data", "uploaded_at", "cost", "consumption_kwh", "file_path", "error_msg"]
             if projection and "content_text" in projection and projection["content_text"] == 0:
                 columns = [c for c in columns if c != "content_text"]
             sql = f"SELECT {', '.join(columns)} FROM files"
@@ -270,6 +270,7 @@ class UnifiedDB:
                 row["specialized_data"] = json.loads(row["specialized_data"])
             except (json.JSONDecodeError, TypeError):
                 row["specialized_data"] = None
+        row.setdefault("error_msg", None)
         return row
 
     async def files_update_one(self, query: dict, update: dict):

@@ -1,5 +1,4 @@
 import fitz # PyMuPDF
-import pdfplumber
 import logging
 import re
 from typing import Dict, Any, List
@@ -16,32 +15,43 @@ class PDFParser(BaseParser):
             doc = fitz.open(file_path)
             full_text = ""
             pages_data = []
-
+            
+            # Heurística: ¿Es un plano arquitectónico?
+            filename_lower = file_path.lower()
+            is_layout = any(word in filename_lower for word in ["layout", "plano", "drawing", "elevation", "floorplan"])
+            
+            # Fast path: text extraction
             for page_num in range(len(doc)):
                 page = doc.load_page(page_num)
-                text = page.get_text()
-                full_text += text
                 
-                # Extracción de geometría vectorial (para planos)
-                paths = page.get_drawings()
-                vector_data = self._process_vector_geometry(paths)
+                # Checar si la página es enorme (tamaño plano A0/Arch E > 2000 pts)
+                rect = page.rect
+                if rect.width > 2000 or rect.height > 2000:
+                    is_layout = True
+                    
+                text = page.get_text()
+                full_text += text + "\n"
                 
                 pages_data.append({
                     "page": page_num + 1,
                     "text_length": len(text),
-                    "vector_shapes": len(paths),
-                    "detected_areas": vector_data
                 })
-
+            
+            # Limpiar texto para Gemini (quitar excesos de saltos de línea y ruido espacial)
+            full_text = re.sub(r'\n{3,}', '\n\n', full_text).strip()
+            
             # Extracción de TABLAS (Cuadros de áreas, cargas, etc.)
-            tables_data = self._extract_tables_with_plumber(file_path)
+            tables_data = []
+            if not is_layout:
+                tables_data = self._extract_tables_with_fitz(doc)
+            else:
+                logger.info(f"Saltando extracción de tablas en {file_path} (heurística de layout activada).")
             
             return {
                 "format": "PDF",
                 "page_count": len(doc),
                 "metadata": self.get_metadata(file_path),
                 "extracted_parameters": self._extract_technical_params(full_text),
-                "geometry": pages_data,
                 "tables": tables_data,
                 "content_text": full_text,
                 "text_summary": {
@@ -113,17 +123,20 @@ class PDFParser(BaseParser):
                         areas.append({"nombre": name, "area_m2": val, "unit": "m2", "source": "text"})
         return areas
 
-    def _extract_tables_with_plumber(self, file_path: str) -> List[Any]:
-        """Extrae tablas estructuradas usando pdfplumber."""
+    def _extract_tables_with_fitz(self, doc: fitz.Document) -> List[Any]:
+        """Extrae tablas estructuradas usando PyMuPDF (mucho más rápido que pdfplumber)."""
         tables = []
         try:
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages:
-                    extracted = page.extract_tables()
-                    if extracted:
-                        tables.extend(extracted)
+            for page in doc:
+                tabs = page.find_tables()
+                if tabs:
+                    for tab in tabs:
+                        data = tab.extract()
+                        # Limpiar celdas vacías (None) a strings vacíos
+                        clean_data = [[c if c is not None else "" for c in row] for row in data]
+                        tables.append(clean_data)
         except Exception as e:
-            logger.error(f"Error extrayendo tablas con pdfplumber: {e}")
+            logger.error(f"Error extrayendo tablas con PyMuPDF: {e}")
         return tables
 
     def _process_vector_geometry(self, paths: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

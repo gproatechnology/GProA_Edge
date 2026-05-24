@@ -17,3 +17,7 @@ pyjwt
 passlib
 python-docx
 PyMuPDF
+shapely
+rtree
+pyyaml
+pyarrow

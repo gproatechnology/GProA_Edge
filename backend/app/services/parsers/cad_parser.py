@@ -3,6 +3,10 @@ import logging
 import os
 from typing import Dict, Any, List
 from app.services.parsers.base_parser import BaseParser
+from app.schemas.technical_entity import (
+    ExtractionResult, TechnicalEntity, MeasureType, Discipline, EntityType
+)
+from app.services.confidence_pipeline import ExtractionConfidence
 
 logger = logging.getLogger(__name__)
 
@@ -275,13 +279,25 @@ class CADParser(BaseParser):
         # 3. HATCH (Sombreados) - Muy común para áreas
         for hatch in msp.query('HATCH'):
             try:
-                # Ezdxf puede calcular el área de muchos sombreados
-                area = hatch.dxf.area # Algunos archivos tienen este atributo pre-calculado
+                area = hatch.dxf.area
                 if not area:
-                    # Si no, intentamos obtener el área de los bordes (si existen)
-                    pass 
-                
-                if area and area > 0.1:
+                    # Calcular área desde los bordes usando shoelace
+                    for path in hatch.paths:
+                        if hasattr(path, 'edges'):
+                            pts = []
+                            for edge in path.edges:
+                                if hasattr(edge, 'start') and hasattr(edge, 'end'):
+                                    pts.append((edge.start[0], edge.start[1]))
+                                    pts.append((edge.end[0], edge.end[1]))
+                            if len(pts) >= 3:
+                                area = self._polygon_area(pts)
+                                if area > 0.1:
+                                    areas.append({
+                                        "nombre": f"Hatch (Sombreado) Capa: {hatch.dxf.layer}",
+                                        "area_m2": area,
+                                        "type": "hatch"
+                                    })
+                elif area and area > 0.1:
                     areas.append({
                         "nombre": f"Hatch (Sombreado) Capa: {hatch.dxf.layer}",
                         "area_m2": area,
@@ -289,7 +305,7 @@ class CADParser(BaseParser):
                     })
             except: continue
             
-        # 4. MPOLYGON
+# 4. MPOLYGON
         for mpoly in msp.query('MPOLYGON'):
             try:
                 area = mpoly.area()
@@ -302,3 +318,91 @@ class CADParser(BaseParser):
             except: continue
                 
         return areas
+
+    def _polygon_area(self, pts: list) -> float:
+        """Calculate polygon area using shoelace formula."""
+        import math
+        if len(pts) < 3: return 0.0
+        area = 0.0
+        n = len(pts)
+        for i in range(n):
+            j = (i + 1) % n
+            area += pts[i][0] * pts[j][1]
+            area -= pts[j][0] * pts[i][1]
+        return abs(area) / 2.0
+
+    def extract_dimensions(self, file_path: str, layer_filter: str = None) -> list:
+        """
+        Extracts all dimension entities from the DXF file.
+        
+        Args:
+            file_path: Path to DXF file
+            layer_filter: Optional layer name to filter dimensions
+            
+        Returns:
+            List of dimension dictionaries with value, layer, type, and coordinates
+        """
+        try:
+            doc = ezdxf.readfile(file_path)
+            msp = doc.modelspace()
+            
+            dimensions = []
+            for dim in msp.query('DIMENSION'):
+                dim_value = dim.get_measurement()
+                dim_layer = dim.dxf.layer
+                
+                if layer_filter and dim_layer != layer_filter:
+                    continue
+                
+                dim_data = {
+                    "value": round(dim_value, 4),
+                    "layer": dim_layer,
+                    "type": dim.dxf.dimtype if hasattr(dim.dxf, 'dimtype') else 0,
+                    "handle": dim.dxf.handle if hasattr(dim.dxf, 'handle') else None
+                }
+                
+                if hasattr(dim.dxf, 'origin'):
+                    dim_data["origin"] = [round(dim.dxf.origin.x, 4), round(dim.dxf.origin.y, 4)]
+                if hasattr(dim.dxf, 'defpoint1'):
+                    dim_data["point1"] = [round(dim.dxf.defpoint1.x, 4), round(dim.dxf.defpoint1.y, 4)]
+                if hasattr(dim.dxf, 'defpoint2'):
+                    dim_data["point2"] = [round(dim.dxf.defpoint2.x, 4), round(dim.dxf.defpoint2.y, 4)]
+                
+                dimensions.append(dim_data)
+            
+            return dimensions
+        except Exception as e:
+            logger.error(f"Error extracting dimensions: {e}")
+            return []
+    
+    def extract(self, file_path: str) -> ExtractionResult:
+        """Extract and return standardized ExtractionResult."""
+        raw_data = self.parse(file_path)
+        
+        entities = []
+        
+        for area in raw_data.get("areas", []):
+            entities.append(TechnicalEntity(
+                type=EntityType.AREA,
+                measure=MeasureType.DESIGN,
+                discipline=Discipline.ARCHITECTURAL,
+                source_file=os.path.basename(file_path),
+                properties={
+                    "area_m2": area.get("area_m2"),
+                    "type": area.get("type"),
+                    "layer": area.get("nombre")
+                },
+                confidence=ExtractionConfidence.DXF_GEOMETRY.value
+            ))
+        
+        return ExtractionResult(
+            measure=MeasureType.DESIGN,
+            discipline=Discipline.ARCHITECTURAL,
+            entities=entities,
+            confidence=ExtractionConfidence.DXF_GEOMETRY.value,
+            source_metadata={
+                "layers": raw_data.get("layers", []),
+                "units": raw_data.get("units"),
+                "geometry": raw_data.get("entities", {})
+            }
+        )
