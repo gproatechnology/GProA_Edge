@@ -74,6 +74,61 @@ def extract_data_mock(content: str, measure: str = "") -> dict:
         data["tipo_equipo"] = "Luminaria LED"
     return data
 
+def generate_structured_summary(det_data: dict, file_doc: dict) -> dict:
+    """
+    Generate a structured summary from parser data without calling LLM.
+    Uses data already extracted by the parser (PDF/CAD/Excel).
+    """
+    # Defensive: handle None
+    if not det_data:
+        return {"source": "parser", "error": "No det_data"}
+    if not file_doc:
+        file_doc = {}
+    
+    summary = {
+        "source": "parser",
+        "page_count": det_data.get("page_count", 0),
+        "text_length": det_data.get("text_summary", {}).get("total_chars", 0),
+        "doc_type": file_doc.get("doc_type", "unknown"),
+        "measure": file_doc.get("measure_edge", "GENERAL"),
+        "category": file_doc.get("category_edge", "unknown"),
+    }
+    
+    # Add extracted parameters (watts, lumens, SHGC, U-value, etc.)
+    params = det_data.get("extracted_parameters", {})
+    if params:
+        summary["parameters"] = params
+    
+    # Add areas from parser
+    areas = []
+    areas.extend(det_data.get("areas", []))
+    areas.extend(det_data.get("text_summary", {}).get("detected_areas_from_text", []))
+    if areas:
+        summary["areas"] = areas
+        summary["total_area_m2"] = sum(a.get("area_m2", 0) for a in areas)
+    
+    # Add tables count
+    tables = det_data.get("tables", [])
+    if tables:
+        summary["tables_count"] = len(tables)
+        # Add key table data (first table with area info)
+        for table in tables[:1]:
+            if any("area" in str(c).lower() or "m2" in str(c) for row in table for c in row):
+                summary["key_table"] = table[:5]  # First 5 rows
+                break
+    
+    # Add specialized data if available
+    spec_data = file_doc.get("specialized_data") or {}
+    if spec_data:
+        summary["specialized"] = spec_data
+    
+    # Add validation status (defensive)
+    if spec_data and spec_data.get("edge_compliant"):
+        summary["edge_compliant"] = spec_data["edge_compliant"]
+        summary["eficacia_lm_W"] = spec_data.get("average_efficiency")
+    
+    return summary
+
 # ── AI Processing Functions (Using LLM Router) ─────────────────────────────
 
 async def classify_file(content: str, filename: str = "") -> dict:
@@ -157,9 +212,9 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                         if "classification" in vision_data:
                             update.update(vision_data["classification"])
             elif ext in ['xlsx', 'xls', 'csv']:
-                det_data = excel_parser.parse(file_path)
+                det_data = await asyncio.to_thread(excel_parser.parse, file_path)
             elif ext == 'docx':
-                det_data = docx_parser.parse(file_path)
+                det_data = await asyncio.to_thread(docx_parser.parse, file_path)
             elif ext in ['jpg', 'jpeg', 'png']:
                 # Las imágenes requieren análisis visual (IA)
                 det_data = await image_processor.process(file_path)
@@ -305,6 +360,11 @@ async def process_single_file_pipeline(file_doc: dict, job_id: str = None) -> di
                 update["specialized_data"] = {"total_watts": 10, "total_lumens": 1100, "eficacia": 110}
             elif measure == "DESIGN":
                 update["specialized_data"] = {"tipo": "Análisis de Diseño", "mensaje": "Datos de diseño general procesados."}
+
+        # 5. Generate structured summary from parser data (no LLM needed)
+        if det_data and file_doc:
+            structured_summary = generate_structured_summary(det_data, file_doc)
+            update["structured_summary"] = structured_summary
 
         update["status"] = "processed"
         await udb.files_update_one({"id": file_id}, {"$set": update})

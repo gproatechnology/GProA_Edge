@@ -41,7 +41,7 @@ class RequiresRelationship(Rule):
     """Entity must have a specific relationship type."""
 
     def evaluate(self, engine: RelationshipEngine, entity: TechnicalEntity) -> RuleResult:
-        rels = engine.registry.get_neighborhood(entity.id)
+        rels = engine.registry.get_neighborhood(entity.uid)
         rel_types = [r.type for r in rels]
         required = self.condition.get("relationship", RelationshipType.ILLUMINATES)
 
@@ -50,7 +50,7 @@ class RequiresRelationship(Rule):
         return RuleResult(
             passed=False,
             message=f"Missing required relationship: {required}",
-            entity_id=entity.id
+            entity_id=entity.uid
         )
 
 
@@ -61,7 +61,7 @@ class AreaMustHaveLighting(Rule):
         if entity.type != EntityType.AREA:
             return RuleResult(passed=True, message="Not an area entity")
 
-        downstream = engine.get_downstream_entities(entity.id)
+        downstream = engine.get_downstream_entities(entity.uid)
         luminaries = [eid for eid in downstream if engine.registry.entities.get(eid, {}).get("type") == EntityType.LUMINAIRE]
 
         if luminaries:
@@ -69,7 +69,7 @@ class AreaMustHaveLighting(Rule):
         return RuleResult(
             passed=False,
             message="Area has no associated luminaries",
-            entity_id=entity.id
+            entity_id=entity.uid
         )
 
 
@@ -80,7 +80,7 @@ class PanelMustFeedCircuit(Rule):
         if entity.type != EntityType.PANEL:
             return RuleResult(passed=True, message="Not a panel entity")
 
-        downstream = engine.get_downstream_entities(entity.id)
+        downstream = engine.get_downstream_entities(entity.uid)
         circuits = [eid for eid in downstream if engine.registry.entities.get(eid, {}).get("type") == EntityType.CIRCUIT]
 
         if circuits:
@@ -88,7 +88,7 @@ class PanelMustFeedCircuit(Rule):
         return RuleResult(
             passed=False,
             message="Panel has no associated circuits",
-            entity_id=entity.id
+            entity_id=entity.uid
         )
 
 

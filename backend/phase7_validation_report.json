@@ -1,0 +1,125 @@
+{
+  "summary": {
+    "total_documents": 10,
+    "successful": 10,
+    "failed": 0,
+    "success_rate": 1.0
+  },
+  "performance": {
+    "avg_nodes_per_doc": 0.0,
+    "avg_edges_per_doc": 0.0
+  },
+  "failure_taxonomy": {},
+  "detailed_results": [
+    {
+      "file": "EEM22_Layout_CUU PV-03 Tristone.pdf",
+      "success": true,
+      "parse_time_ms": 7056.8,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 16852
+    },
+    {
+      "file": "Tristone_Area Breakdown_Layout.pdf",
+      "success": true,
+      "parse_time_ms": 312.08,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 42
+    },
+    {
+      "file": "Tristone_EEM01_WWR_Drawings-Elevations.pdf",
+      "success": true,
+      "parse_time_ms": 239.57,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 32
+    },
+    {
+      "file": "24044A250 Layout1.pdf",
+      "success": true,
+      "parse_time_ms": 642.09,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 15
+    },
+    {
+      "file": "24044A700 Layout1.pdf",
+      "success": true,
+      "parse_time_ms": 622.62,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 18
+    },
+    {
+      "file": "22011a670ElevPaint Layout1.pdf",
+      "success": true,
+      "parse_time_ms": 500.59,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 17
+    },
+    {
+      "file": "22011e101ExtLighting.pdf",
+      "success": true,
+      "parse_time_ms": 1659.87,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 35
+    },
+    {
+      "file": "22011e102FacadeLighting.pdf",
+      "success": true,
+      "parse_time_ms": 1506.62,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 20
+    },
+    {
+      "file": "24044EL100.pdf",
+      "success": true,
+      "parse_time_ms": 219.73,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 43
+    },
+    {
+      "file": "24044EL101.pdf",
+      "success": true,
+      "parse_time_ms": 1288.28,
+      "graph_nodes": 0,
+      "graph_edges": 0,
+      "node_survival_rate": 0.0,
+      "failure_mode": null,
+      "topology_integrity": "unknown",
+      "memory_kb": 34
+    }
+  ]
+}

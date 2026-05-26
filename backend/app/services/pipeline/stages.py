@@ -6,7 +6,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 
-from app.schemas.technical_entity import TechnicalEntity
+from app.schemas.technical_entity import TechnicalEntity, EntityStatus, Relationship, RelationshipStatus
 
 from .contracts import StageResult, StageStatus, ProcessingContract
 from .events import PipelineEventType, PipelineEvent, event_bus
@@ -133,16 +133,18 @@ class EntityNormalizationStage(BaseStage):
         
         normalized = []
         for e in entities:
-            entity_id = e.get("id") or e.get("entity_id")
-            entity_type = e.get("type") or e.get("entity_type")
-            normalized.append({
-                "id": entity_id,
-                "type": entity_type,
-                "measure": e.get("measure"),
-                "discipline": e.get("discipline"),
-                "properties": e.get("properties", {}),
-                "coordinates": e.get("coordinates")
-            })
+            # TechnicalEntity now handles normalization via its constructor
+            if isinstance(e, dict):
+                entity = TechnicalEntity(**e)
+            else:
+                entity = e
+            
+            # ── UAKG v1.0 Status Ingestion ──
+            # If entity came from AI (specialized_processor), mark as INFERRED
+            if entity.provenance.extraction_method == "ai_specialized":
+                entity.status = EntityStatus.INFERRED
+            
+            normalized.append(entity.model_dump())
         
         result.output = {"entities": normalized, "count": len(normalized)}
         result.confidence = 1.0
@@ -163,15 +165,16 @@ class IdentityResolutionStage(BaseStage):
         canonical_map = {}
         for e in entities:
             try:
-                entity_id = e.get("id") or e.get("entity_id")
-                e_copy = dict(e)
-                if "entity_id" in e_copy:
-                    e_copy["id"] = e_copy["entity_id"]
-                entity = TechnicalEntity(**e_copy) if isinstance(e_copy, dict) else e
+                # Use unified uid field
+                if isinstance(e, dict):
+                    entity = TechnicalEntity(**e)
+                else:
+                    entity = e
+                
                 canonical_id, _ = resolver.resolve(entity)
-                canonical_map[entity_id] = canonical_id
-            except Exception:
-                pass
+                canonical_map[entity.uid] = canonical_id
+            except Exception as e:
+                logger.error(f"Identity resolution failed for entity: {e}")
         
         result.output = {
             "identity_map": canonical_map,
@@ -179,6 +182,7 @@ class IdentityResolutionStage(BaseStage):
         }
         result.confidence = 0.9 if canonical_map else 1.0
         return result
+
 
 
 class RelationshipInferenceStage(BaseStage):
@@ -194,15 +198,30 @@ class RelationshipInferenceStage(BaseStage):
         
         spatial = SpatialReasoning(registry.spatial_idx)
         
-        inferred = []
-        inferred.extend(spatial.infer_luminaire_area_coverage(entities))
-        inferred.extend(spatial.infer_panel_circuit_mapping(entities))
-        inferred.extend(spatial.infer_hvac_zone_mapping(entities))
+        inferred_raw = []
+        inferred_raw.extend(spatial.infer_luminaire_area_coverage(entities))
+        inferred_raw.extend(spatial.infer_panel_circuit_mapping(entities))
+        inferred_raw.extend(spatial.infer_hvac_zone_mapping(entities))
         
+        # ── UAKG v1.0 Relationship Wrapping ──
+        inferred_objects = []
+        for rel_data in inferred_raw:
+            # We assume spatial intelligence proposes fact-like inferences
+            rel_obj = Relationship(
+                id=f"rel_inf_{len(inferred_objects)}",
+                type=rel_data.get("type"),
+                status=RelationshipStatus.INFERENCE,
+                source_entity_id=rel_data.get("source"),
+                target_entity_id=rel_data.get("target"),
+                source_file="pipeline_inference",
+                confidence=0.85
+            )
+            inferred_objects.append(rel_obj.model_dump())
+
         existing_relationships = context.get("relationships", [])
-        all_relationships = existing_relationships + inferred
+        all_relationships = existing_relationships + inferred_objects
         
-        result.output = {"relationships": all_relationships, "count": len(inferred)}
+        result.output = {"relationships": all_relationships, "count": len(inferred_objects)}
         result.confidence = 0.85
         return result
 
@@ -277,6 +296,36 @@ class CrossDocumentReconciliationStage(BaseStage):
         
         result.output = {"reconciled": True}
         result.confidence = 0.9
+        return result
+
+class TruthArbitrationStage(BaseStage):
+    def __init__(self):
+        super().__init__("truth_arbitration")
+
+    async def _process(self, context: Dict[str, Any]) -> StageResult:
+        entities = context.get("entities", [])
+        result = StageResult(stage_name=self.name, status=StageStatus.RUNNING)
+
+        from app.services.truth_arbitrator import arbitrator
+
+        # We need actual TechnicalEntity objects for the arbitrator
+        entity_objects = []
+        for e in entities:
+            if isinstance(e, dict):
+                entity_objects.append(TechnicalEntity(**e))
+            else:
+                entity_objects.append(e)
+
+        # Run Adjudication (TAL v1.0)
+        adjudicated_entities = arbitrator.adjudicate_all(entity_objects)
+
+        # Dump back to dicts for pipeline context
+        result.output = {
+            "entities": [e.model_dump() for e in adjudicated_entities],
+            "adjudication_count": len(adjudicated_entities),
+            "ambiguous_count": sum(1 for e in adjudicated_entities if e.adjudication.decision == "ambiguous")
+        }
+        result.confidence = 1.0
         return result
 
 

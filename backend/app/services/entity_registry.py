@@ -15,33 +15,10 @@ import rtree
 
 from app.schemas.technical_entity import (
     TechnicalEntity, ExtractionResult, EntityType, MeasureType, Discipline,
-    Provenance, SpatialBounds, ValidationIssue
+    Provenance, SpatialBounds, ValidationIssue, Relationship, RelationshipType, RelationshipStatus
 )
 
 logger = logging.getLogger(__name__)
-
-
-class RelationshipType(str, Enum):
-    ILLUMINATES = "illuminates"
-    FEEDS = "feeds"
-    CONNECTED_TO = "connected_to"
-    LOCATED_IN = "located_in"
-    PART_OF = "part_of"
-    CONTROLS = "controls"
-    SUPPLIES = "supplies"
-    REFERENCES = "references"
-
-
-class Relationship(BaseModel):
-    """Connection between two technical entities."""
-    id: str
-    type: RelationshipType
-    source_entity_id: str
-    target_entity_id: str
-    source_file: str
-    properties: Dict[str, Any] = Field(default_factory=dict)
-    confidence: float = 0.95
-    validation_status: Optional[str] = None
 
 
 class SpatialIndex:
@@ -51,11 +28,11 @@ class SpatialIndex:
         self.idx = rtree.index.Index()
         self.bounds_map: Dict[int, tuple] = {}
 
-    def insert(self, entity_id: str, bounds: SpatialBounds):
-        key = hash(entity_id) % (2**31)
+    def insert(self, uid: str, bounds: SpatialBounds):
+        key = hash(uid) % (2**31)
         min_x, min_y, max_x, max_y = bounds.min_x, bounds.min_y, bounds.max_x, bounds.max_y
-        self.idx.insert(key, (min_x, min_y, max_x, max_y), obj=entity_id)
-        self.bounds_map[key] = (entity_id, bounds)
+        self.idx.insert(key, (min_x, min_y, max_x, max_y), obj=uid)
+        self.bounds_map[key] = (uid, bounds)
 
     def query(self, bounds: SpatialBounds) -> List[str]:
         result = []
@@ -79,35 +56,38 @@ class EntityRegistry:
 
     def add(self, entity: TechnicalEntity):
         """Add entity to registry with provenance tracking."""
-        self.entities[entity.id] = entity
+        uid = entity.uid
+        self.entities[uid] = entity
 
         if entity.type not in self.by_type:
             self.by_type[entity.type] = []
-        self.by_type[entity.type].append(entity.id)
+        self.by_type[entity.type].append(uid)
 
         if entity.measure not in self.by_measure:
             self.by_measure[entity.measure] = []
-        self.by_measure[entity.measure].append(entity.id)
+        self.by_measure[entity.measure].append(uid)
 
         if entity.discipline not in self.by_discipline:
             self.by_discipline[entity.discipline] = []
-        self.by_discipline[entity.discipline].append(entity.id)
+        self.by_discipline[entity.discipline].append(uid)
 
         coords = entity.coordinates or {}
         bbox = coords.get("bbox") or coords.get("bounds")
         if bbox and len(bbox) >= 4:
             bounds = SpatialBounds(min_x=bbox[0], min_y=bbox[1], max_x=bbox[2], max_y=bbox[3])
-            self.spatial_idx.insert(entity.id, bounds)
+            self.spatial_idx.insert(uid, bounds)
 
-    def link(self, source_id: str, target_id: str, rel_type: RelationshipType,
-             properties: Dict[str, Any] = None, confidence: float = 0.95):
-        """Create relationship between entities."""
+    def link(self, source_uid: str, target_uid: str, rel_type: RelationshipType,
+             properties: Dict[str, Any] = None, confidence: float = 0.95,
+             status: RelationshipStatus = RelationshipStatus.FACT):
+        """Create relationship between entities with UAKG support."""
         rel = Relationship(
-            id=f"rel_{len(self.relationships)}_{source_id}_{target_id}",
+            uid=f"rel_{len(self.relationships)}_{source_uid}_{target_uid}",
             type=rel_type,
-            source_entity_id=source_id,
-            target_entity_id=target_id,
-            source_file=self.entities[source_id].provenance.source_file if source_id in self.entities else "unknown",
+            status=status,
+            source_uid=source_uid,
+            target_uid=target_uid,
+            source_file=self.entities[source_uid].provenance.source_file if source_uid in self.entities else "unknown",
             properties=properties or {},
             confidence=confidence
         )
@@ -115,25 +95,25 @@ class EntityRegistry:
         return rel
 
     def get_by_type(self, entity_type: EntityType) -> List[TechnicalEntity]:
-        return [self.entities[eid] for eid in self.by_type.get(entity_type, [])]
+        return [self.entities[uid] for uid in self.by_type.get(entity_type, [])]
 
     def get_by_measure(self, measure: MeasureType) -> List[TechnicalEntity]:
-        return [self.entities[eid] for eid in self.by_measure.get(measure, [])]
+        return [self.entities[uid] for uid in self.by_measure.get(measure, [])]
 
-    def get_neighborhood(self, entity_id: str) -> List[Relationship]:
+    def get_neighborhood(self, uid: str) -> List[Relationship]:
         return [r for r in self.relationships
-                if r.source_entity_id == entity_id or r.target_entity_id == entity_id]
+                if r.source_uid == uid or r.target_uid == uid]
 
     def query_spatial(self, bounds: SpatialBounds) -> List[TechnicalEntity]:
         """Find entities within spatial bounds."""
         ids = self.spatial_idx.query(bounds)
-        return [self.entities[eid] for eid in ids if eid in self.entities]
+        return [self.entities[uid] for uid in ids if uid in self.entities]
 
-    def find_containment(self, entity_id: str) -> List[tuple]:
+    def find_containment(self, uid: str) -> List[tuple]:
         """Find areas that contain an entity."""
-        if entity_id not in self.entities:
+        if uid not in self.entities:
             return []
-        entity = self.entities[entity_id]
+        entity = self.entities[uid]
         coords = entity.coordinates or {}
         cx, cy = coords.get("centroid_x"), coords.get("centroid_y")
         if not (cx and cy):
@@ -148,7 +128,7 @@ class EntityRegistry:
             area_coords = area.coordinates or {}
             area_bbox = area_coords.get("bbox") or area_coords.get("bounds")
             if area_bbox and area_bbox[0] <= cx <= area_bbox[2] and area_bbox[1] <= cy <= area_bbox[3]:
-                results.append((area.id, area))
+                results.append((area.uid, area))
         return results
 
 
@@ -161,7 +141,7 @@ class RelationshipEngine:
 
     def _add_entity_to_graph(self, entity: TechnicalEntity):
         self.graph.add_node(
-            entity.id,
+            entity.uid,
             type=entity.type.value,
             measure=entity.measure.value,
             discipline=entity.discipline.value,
@@ -171,8 +151,8 @@ class RelationshipEngine:
 
     def _add_relationship_to_graph(self, rel: Relationship):
         self.graph.add_edge(
-            rel.source_entity_id,
-            rel.target_entity_id,
+            rel.source_uid,
+            rel.target_uid,
             relationship_id=rel.id,
             type=rel.type.value,
             confidence=rel.confidence,
@@ -190,12 +170,13 @@ class RelationshipEngine:
 
             if area_ref:
                 for area in areas:
-                    if area.id == area_ref:
+                    if area.uid == area_ref:
                         self._add_entity_to_graph(area)
-                        rel = self.registry.link(lum.id, area.id,
+                        rel = self.registry.link(lum.uid, area.uid,
                             RelationshipType.ILLUMINATES,
                             properties={"inferred": True, "method": "area_reference"},
-                            confidence=0.95)
+                            confidence=0.95,
+                            status=RelationshipStatus.INFERENCE)
                         self._add_relationship_to_graph(rel)
                         break
 
@@ -208,40 +189,42 @@ class RelationshipEngine:
             panel_props = panel.properties
             circuit_list = panel_props.get("circuit_ids", [])
 
-            for circuit_id in circuit_list:
-                if circuit_id in self.registry.entities:
-                    circuit = self.registry.entities[circuit_id]
+            for circuit_uid in circuit_list:
+                if circuit_uid in self.registry.entities:
+                    circuit = self.registry.entities[circuit_uid]
                     self._add_entity_to_graph(circuit)
-                    rel = self.registry.link(panel.id, circuit_id,
+                    rel = self.registry.link(panel.uid, circuit_uid,
                         RelationshipType.FEEDS,
                         properties={"inferred": True, "method": "schedule"},
-                        confidence=0.99)
+                        confidence=0.99,
+                        status=RelationshipStatus.INFERENCE)
                     self._add_relationship_to_graph(rel)
 
     def infer_location_relationships(self, extraction: ExtractionResult):
         for entity in self.registry.entities.values():
             self._add_entity_to_graph(entity)
-            area_id = entity.properties.get("area_id")
-            if area_id and area_id in self.registry.entities:
-                rel = self.registry.link(entity.id, area_id,
+            area_uid = entity.properties.get("area_id")
+            if area_uid and area_uid in self.registry.entities:
+                rel = self.registry.link(entity.uid, area_uid,
                     RelationshipType.LOCATED_IN,
                     properties={"inferred": True, "method": "spatial"},
-                    confidence=0.90)
+                    confidence=0.90,
+                    status=RelationshipStatus.INFERENCE)
                 self._add_relationship_to_graph(rel)
 
-    def get_downstream_entities(self, entity_id: str) -> List[str]:
-        return list(nx.descendants(self.graph, entity_id))
+    def get_downstream_entities(self, uid: str) -> List[str]:
+        return list(nx.descendants(self.graph, uid))
 
-    def get_upstream_entities(self, entity_id: str) -> List[str]:
-        return list(nx.ancestors(self.graph, entity_id))
+    def get_upstream_entities(self, uid: str) -> List[str]:
+        return list(nx.ancestors(self.graph, uid))
 
-    def get_connected_component(self, entity_id: str) -> Set[str]:
+    def get_connected_component(self, uid: str) -> Set[str]:
         undirected = self.graph.to_undirected()
-        return set(nx.node_connected_component(undirected, entity_id))
+        return set(nx.node_connected_component(undirected, uid))
 
-    def find_path(self, source_id: str, target_id: str) -> Optional[List[str]]:
+    def find_path(self, source_uid: str, target_uid: str) -> Optional[List[str]]:
         try:
-            return nx.shortest_path(self.graph, source_id, target_id)
+            return nx.shortest_path(self.graph, source_uid, target_uid)
         except nx.NetworkXNoPath:
             return None
 
@@ -252,9 +235,9 @@ class RelationshipEngine:
             "confidence_gaps": []
         }
         for entity_type in [EntityType.LUMINAIRE, EntityType.CIRCUIT, EntityType.PANEL]:
-            for entity_id in self.registry.by_type.get(entity_type, []):
-                if self.graph.in_degree(entity_id) == 0 and self.graph.out_degree(entity_id) == 0:
-                    issues["orphaned_entities"].append(entity_id)
+            for uid in self.registry.by_type.get(entity_type, []):
+                if self.graph.in_degree(uid) == 0 and self.graph.out_degree(uid) == 0:
+                    issues["orphaned_entities"].append(uid)
         return issues
 
 

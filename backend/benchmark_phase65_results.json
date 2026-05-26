@@ -1,0 +1,240 @@
+{
+  "benchmark_results": [
+    {
+      "stage": "clustering",
+      "room_count": 10,
+      "duration_ms": 1.875,
+      "memory_kb": 29,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 1.8747,
+      "time_per_edge_ms": 1.8747
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 10,
+      "duration_ms": 2.551,
+      "memory_kb": 18,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 2.5508,
+      "time_per_edge_ms": 2.5508
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 10,
+      "duration_ms": 4.229,
+      "memory_kb": 40,
+      "node_count": 10,
+      "edge_count": 13,
+      "time_per_node_ms": 0.4229,
+      "time_per_edge_ms": 0.3253
+    },
+    {
+      "stage": "clustering",
+      "room_count": 25,
+      "duration_ms": 3.382,
+      "memory_kb": 58,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 3.3824,
+      "time_per_edge_ms": 3.3824
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 25,
+      "duration_ms": 4.938,
+      "memory_kb": 44,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 4.9379,
+      "time_per_edge_ms": 4.9379
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 25,
+      "duration_ms": 11.39,
+      "memory_kb": 106,
+      "node_count": 25,
+      "edge_count": 39,
+      "time_per_node_ms": 0.4556,
+      "time_per_edge_ms": 0.2921
+    },
+    {
+      "stage": "clustering",
+      "room_count": 50,
+      "duration_ms": 7.558,
+      "memory_kb": 118,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 7.5581,
+      "time_per_edge_ms": 7.5581
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 50,
+      "duration_ms": 16.117,
+      "memory_kb": 100,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 16.1173,
+      "time_per_edge_ms": 16.1173
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 50,
+      "duration_ms": 32.661,
+      "memory_kb": 228,
+      "node_count": 50,
+      "edge_count": 85,
+      "time_per_node_ms": 0.6532,
+      "time_per_edge_ms": 0.3842
+    },
+    {
+      "stage": "clustering",
+      "room_count": 100,
+      "duration_ms": 14.297,
+      "memory_kb": 238,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 14.2968,
+      "time_per_edge_ms": 14.2968
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 100,
+      "duration_ms": 55.981,
+      "memory_kb": 226,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 55.9809,
+      "time_per_edge_ms": 55.9809
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 100,
+      "duration_ms": 94.247,
+      "memory_kb": 483,
+      "node_count": 100,
+      "edge_count": 179,
+      "time_per_node_ms": 0.9425,
+      "time_per_edge_ms": 0.5265
+    },
+    {
+      "stage": "clustering",
+      "room_count": 200,
+      "duration_ms": 19.53,
+      "memory_kb": 490,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 19.5298,
+      "time_per_edge_ms": 19.5298
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 200,
+      "duration_ms": 305.678,
+      "memory_kb": 485,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 305.6784,
+      "time_per_edge_ms": 305.6784
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 200,
+      "duration_ms": 300.658,
+      "memory_kb": 999,
+      "node_count": 200,
+      "edge_count": 371,
+      "time_per_node_ms": 1.5033,
+      "time_per_edge_ms": 0.8104
+    },
+    {
+      "stage": "clustering",
+      "room_count": 500,
+      "duration_ms": 53.469,
+      "memory_kb": 1250,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 53.4694,
+      "time_per_edge_ms": 53.4694
+    },
+    {
+      "stage": "adjacency",
+      "room_count": 500,
+      "duration_ms": 1185.327,
+      "memory_kb": 1275,
+      "node_count": 0,
+      "edge_count": 0,
+      "time_per_node_ms": 1185.3273,
+      "time_per_edge_ms": 1185.3273
+    },
+    {
+      "stage": "full_graph",
+      "room_count": 500,
+      "duration_ms": 853.678,
+      "memory_kb": 2562,
+      "node_count": 500,
+      "edge_count": 955,
+      "time_per_node_ms": 1.7074,
+      "time_per_edge_ms": 0.8939
+    },
+    {
+      "stage": "graph_office",
+      "room_count": 100,
+      "duration_ms": 42.722,
+      "memory_kb": 497,
+      "node_count": 100,
+      "edge_count": 179,
+      "time_per_node_ms": 0.4272,
+      "time_per_edge_ms": 0.2387
+    },
+    {
+      "stage": "graph_hospital",
+      "room_count": 100,
+      "duration_ms": 46.2,
+      "memory_kb": 696,
+      "node_count": 100,
+      "edge_count": 338,
+      "time_per_node_ms": 0.462,
+      "time_per_edge_ms": 0.1367
+    },
+    {
+      "stage": "graph_retail",
+      "room_count": 100,
+      "duration_ms": 55.727,
+      "memory_kb": 293,
+      "node_count": 100,
+      "edge_count": 33,
+      "time_per_node_ms": 0.5573,
+      "time_per_edge_ms": 1.6887
+    },
+    {
+      "stage": "graph_factory",
+      "room_count": 100,
+      "duration_ms": 67.308,
+      "memory_kb": 478,
+      "node_count": 100,
+      "edge_count": 176,
+      "time_per_node_ms": 0.6731,
+      "time_per_edge_ms": 0.3824
+    }
+  ],
+  "complexity_analysis": {
+    "detected_bottlenecks": [
+      "adjacency O(n^2)"
+    ],
+    "scaling_evidence": [
+      "[25->50 rooms] time ratio 3.26x vs linear 2.00x",
+      "[50->100 rooms] time ratio 3.47x vs linear 2.00x",
+      "[100->200 rooms] time ratio 5.46x vs linear 2.00x",
+      "[200->500 rooms] time ratio 3.88x vs linear 2.50x"
+    ]
+  },
+  "recommendations": [
+    "Detect O(n^2) in adjacency - use spatial index (R-tree/k-d tree)",
+    "Consider batching for graphs > 200 nodes",
+    "Profile memory for large floor plates"
+  ]
+}

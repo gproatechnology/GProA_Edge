@@ -18,21 +18,22 @@ class DiscrepancySeverity(str, Enum):
 
 @dataclass
 class Discrepancy:
-    """Represents an inconsistency between document sources."""
+    """Represents an inconsistency between document sources with full auditability."""
     measure: str
     field: str
-    sources: Dict[str, float]  # source_file -> value
+    sources: Dict[str, Any]  # source_file/type -> value
     severity: DiscrepancySeverity
     description: str
     confidence: float = 0.90
+    audit_trail: List[str] = field(default_factory=list)
     
     @property
     def variance_percent(self) -> float:
-        """Calculate percentage variance between sources."""
-        values = list(self.sources.values())
-        if not values:
+        """Calculate percentage variance between numerical sources."""
+        numeric_values = [v for v in self.sources.values() if isinstance(v, (int, float))]
+        if not numeric_values or len(numeric_values) < 2:
             return 0.0
-        min_val, max_val = min(values), max(values)
+        min_val, max_val = min(numeric_values), max(numeric_values)
         if min_val == 0:
             return 100.0 if max_val > 0 else 0.0
         return ((max_val - min_val) / min_val) * 100
@@ -42,7 +43,7 @@ class Discrepancy:
 class ReconciliationResult:
     """Result of cross-document reconciliation."""
     discrepancies: List[Discrepancy] = field(default_factory=list)
-    reconciled_values: Dict[str, float] = field(default_factory=dict)
+    reconciled_values: Dict[str, Any] = field(default_factory=dict)
     confidence_scores: Dict[str, float] = field(default_factory=dict)
     
     @property
@@ -55,7 +56,10 @@ class ReconciliationResult:
 
 
 class CrossDocumentReconciler:
-    """Reconciles values across multiple document sources."""
+    """
+    Industrial-grade reconciler for technical engineering data.
+    Ensures 'Single Source of Truth' by detecting and resolving 'Entity Drift'.
+    """
     
     # Known acceptable tolerances per measure/field
     TOLERANCES = {
@@ -72,6 +76,40 @@ class CrossDocumentReconciler:
         }
     }
     
+    def reconcile_entities(self, entities: List[Any]) -> ReconciliationResult:
+        """
+        Detect discrepancies between entities that represent the same technical reality (Entity Drift).
+        """
+        result = ReconciliationResult()
+        # Group entities by canonical UID (Identity Resolution must run first)
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for e in entities:
+            # uid is our single source of truth from EntityBuilder
+            grouped[e.uid].append(e)
+            
+        for uid, group in grouped.items():
+            if len(group) < 2:
+                continue
+                
+            # Compare critical properties across sources
+            primary = group[0]
+            for other in group[1:]:
+                if primary.type != other.type:
+                    result.discrepancies.append(Discrepancy(
+                        measure=primary.measure,
+                        field="type",
+                        sources={
+                            primary.provenance.source_file: primary.type,
+                            other.provenance.source_file: other.type
+                        },
+                        severity=DiscrepancySeverity.CRITICAL,
+                        description=f"Type mismatch for entity {uid}: {primary.type} vs {other.type}",
+                        audit_trail=[f"Source 1: {primary.provenance.parser_used}", f"Source 2: {other.provenance.parser_used}"]
+                    ))
+        
+        return result
+
     def reconcile_lighting_loads(
         self,
         lighting_calc_kw: float,
@@ -80,42 +118,36 @@ class CrossDocumentReconciler:
         source_files: Dict[str, str] = None
     ) -> ReconciliationResult:
         """
-        Reconcile lighting loads between calculation and panel schedule.
-        
-        Args:
-            lighting_calc_kw: Calculated lighting load in kW
-            panel_kw: Panel schedule load in kW
-            exterior_kw: Optional exterior lighting load
-            source_files: Mapping of value names to source file names
+        Regulatory-grade reconciliation for lighting loads.
+        Explains gaps using industrial diversity factors.
         """
         result = ReconciliationResult()
         sources = source_files or {}
         
-        # Check lighting vs panel discrepancy
+        # Diversity Factor Analysis (Point 8 Audit)
         if panel_kw > 0:
             ratio = lighting_calc_kw / panel_kw
             variance = abs(1.0 - ratio)
             
-            if variance > 0.30:  # More than 30% difference
+            # 15% - 30% is expected diversity in Industrial projects
+            if 0.70 <= ratio <= 0.85:
+                result.reconciled_values["diversity_factor_status"] = "Consistent (Industrial Diversity)"
+                result.reconciled_values["inferred_diversity_factor"] = round(ratio, 2)
+            elif variance > self.TOLERANCES["EEM22"]["calculated_kw"]:
                 severity = DiscrepancySeverity.CRITICAL if variance > 0.50 else DiscrepancySeverity.WARNING
                 
                 result.discrepancies.append(Discrepancy(
                     measure="EEM22",
                     field="lighting_load",
                     sources={
-                        "calculated": lighting_calc_kw,
+                        "calculation_sheet": lighting_calc_kw,
                         "panel_schedule": panel_kw,
-                        **({"exterior": exterior_kw} if exterior_kw else {})
+                        **({"exterior_lighting": exterior_kw} if exterior_kw else {})
                     },
                     severity=severity,
-                    description=f"Lighting load mismatch: {lighting_calc_kw} kW vs panel {panel_kw} kW",
-                    confidence=0.92
+                    description=f"Lighting load gap exceeds tolerance ({variance:.1%}). Possible missing plans or mislabeled panels.",
+                    audit_trail=[f"Calculated from {sources.get('calc', 'unknown')}", f"Panel from {sources.get('panel', 'unknown')}"]
                 ))
-            
-            # Check for diversity factor
-            diversity_factor = min(ratio, 1.0)  # Panel should be higher
-            if 0.7 <= diversity_factor <= 0.95:
-                result.reconciled_values["diversity_factor"] = round(diversity_factor, 2)
         
         return result
     

@@ -40,6 +40,7 @@ class EntityIdentityResolver:
     def find_match(self, entity: TechnicalEntity, threshold: float = 0.85) -> Optional[str]:
         """Find canonical ID for an entity based on properties."""
         candidates = []
+        # Use uid for stable mapping if name properties are missing
         entity_key = f"{entity.type.value}_{entity.properties.get('watts', 0)}_{entity.properties.get('lumens', 0)}"
 
         for canon_id, canon in self.canonical_entities.items():

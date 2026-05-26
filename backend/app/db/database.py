@@ -66,7 +66,7 @@ class UnifiedDB:
                     pass  # Column already exists or other SQLite error
             
             # Files
-            for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT"), ("error_msg", "TEXT")]:
+            for col, col_type in [("cost", "REAL"), ("consumption_kwh", "REAL"), ("file_path", "TEXT"), ("error_msg", "TEXT"), ("structured_summary", "TEXT")]:
                 try:
                     await self.conn.execute(f"ALTER TABLE files ADD COLUMN {col} {col_type}")
                 except Exception:
@@ -283,6 +283,8 @@ class UnifiedDB:
                 set_dict["areas"] = json.dumps(set_dict["areas"])
             if "specialized_data" in set_dict and isinstance(set_dict["specialized_data"], dict):
                 set_dict["specialized_data"] = json.dumps(set_dict["specialized_data"])
+            if "structured_summary" in set_dict and isinstance(set_dict["structured_summary"], dict):
+                set_dict["structured_summary"] = json.dumps(set_dict["structured_summary"])
             set_clause = ", ".join([f"{k}=?" for k in set_dict.keys()])
             params = list(set_dict.values())
             where = [f"{k}=?" for k in query.keys()]

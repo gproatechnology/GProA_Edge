@@ -21,3 +21,4 @@ shapely
 rtree
 pyyaml
 pyarrow
+networkx

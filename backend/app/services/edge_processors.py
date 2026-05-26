@@ -110,7 +110,7 @@ def process_water_fixtures_mock(measure: str, content: str) -> dict:
 # ── REAL PROCESSORS ────────────────────────────────────────────────────
 
 async def process_eem22_luminaires(content: str, api_key: str) -> dict:
-    """EEM22 Specialized: Extract luminaire table using strict Pydantic Schemas and calculate global efficacy."""
+    """EEM22 Specialized: Extract luminaire table using AI and calculate efficacy using deterministic engine."""
     if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         return process_eem22_luminaires_mock(content)
 
@@ -137,33 +137,16 @@ async def process_eem22_luminaires(content: str, api_key: str) -> dict:
         
         data = json.loads(response.text.strip())
 
-        # ── Cálculos Deterministas Post-Extracción ──
-        luminarias = data.get("luminarias", [])
-        total_lumens_weighted = 0
-        total_watts_weighted = 0
-        total_qty_calculated = 0
-
-        for lum in luminarias:
-            qty = lum.get("cantidad", 1) or 1
-            lumens = lum.get("lumens", 0.0) or 0.0
-            watts = lum.get("watts", 0.0) or 0.0
-            
-            total_lumens_weighted += lumens * qty
-            total_watts_weighted += watts * qty
-            total_qty_calculated += qty
-            
-            if watts > 0:
-                lum["eficiencia"] = round(lumens / watts, 2)
-            else:
-                lum["eficiencia"] = 0.0
-
-        eficacia_global = round(total_lumens_weighted / total_watts_weighted, 2) if total_watts_weighted > 0 else 0
-
-        data["eficacia_global"] = eficacia_global
-        data["total_lumens"] = total_lumens_weighted
-        data["total_watts"] = total_watts_weighted
-        data["total_luminarias"] = total_qty_calculated
-        data["cumple_edge"] = eficacia_global >= 90.0
+        # ── Cálculos Determinísticos Desacoplados (GPT Punto 11) ──
+        from app.services.edge_engineering import engineering
+        luminarias_raw = data.get("luminarias", [])
+        
+        # Delegamos el cálculo al motor determinístico
+        calc_results = engineering.calculate_lighting_efficiency(luminarias_raw)
+        
+        # Fusionamos resultados para mantener compatibilidad con el frontend
+        data.update(calc_results)
+        data["luminarias"] = calc_results["luminarias_procesadas"]
 
         return data
 
@@ -319,9 +302,10 @@ async def process_area_breakdown(content: str, api_key: str = None, file_path: s
 
     from app.services.parsers.pdf_parser import PDFParser
     from app.schemas.technical_entity import (
-        ExtractionResult, TechnicalEntity, Provenance,
+        ExtractionResult, TechnicalEntity, RawDataProposal, Provenance,
         MeasureType, Discipline, EntityType
     )
+    from app.services.entity_builder import builder
     from app.services.confidence_pipeline import ExtractionConfidence
     from datetime import datetime
 
@@ -349,22 +333,26 @@ async def process_area_breakdown(content: str, api_key: str = None, file_path: s
             provenance = Provenance(
                 source_file=source_file,
                 parser_used="process_area_breakdown",
-                extraction_method="pdf_text_regex",
-                extracted_at=datetime.utcnow().isoformat()
+                extraction_method="pdf_text_regex"
             )
-            entities.append(TechnicalEntity(
+            
+            # Use RawDataProposal and EntityBuilder (GPT Point 9)
+            proposal = RawDataProposal(
                 type=EntityType.AREA,
-                measure=MeasureType.DESIGN,
-                discipline=Discipline.ARCHITECTURAL,
-                provenance=provenance,
                 properties={
                     "area_m2": area_value,
                     "categoria_edge": categoria_edge,
                     "densidad_watts_estimada": densidad,
                     "nombre": nombre
                 },
-                confidence=ExtractionConfidence.PDF_VECTOR_TEXT.value
-            ))
+                provenance=provenance,
+                confidence=ExtractionConfidence.PDF_VECTOR_TEXT.value,
+                measure=MeasureType.DESIGN,
+                discipline=Discipline.ARCHITECTURAL
+            )
+            
+            entities.append(builder.build(proposal))
+            
             areas.append({
                 "area_m2": area_value,
                 "categoria_edge": categoria_edge
@@ -578,7 +566,7 @@ EDGE_BASELINES = {
 }
 
 async def process_water_fixtures(content: str, measure: str, api_key: str) -> dict:
-    """WEM01/WEM02 Specialized: Extract water fixture data and calculate savings."""
+    """WEM01/WEM02 Specialized: Extract water fixture data using AI and calculate savings deterministically."""
     if not gemini_client or GEMINI_API_KEY == "sk-your-key-here":
         data = process_water_fixtures_mock(measure, content)
     else:
@@ -624,37 +612,16 @@ async def process_water_fixtures(content: str, measure: str, api_key: str) -> di
             logger.error(f"Water processor error: {e}")
             data = process_water_fixtures_mock(measure, content)
 
-    # ── Real Calculation vs Baseline ───────────────────────────────────
-    aparatos = data.get("aparatos", [])
-    total_flow = 0
-    total_qty = 0
-    savings_detail = []
-
-    for item in aparatos:
-        qty = item.get("cantidad", 1) or 1
-        flow = item.get("flujo_lpm", 0.0) or 0.0
-        tipo = item.get("tipo", "").lower()
-        
-        # Determine baseline
-        baseline = 6.0 # Default
-        if "ducha" in tipo or "shower" in tipo: baseline = EDGE_BASELINES["WATER"]["Showers"]
-        elif "inodoro" in tipo or "toilet" in tipo or "sanitario" in tipo: baseline = EDGE_BASELINES["WATER"]["Toilets"]
-        elif "urinario" in tipo or "urinal" in tipo: baseline = EDGE_BASELINES["WATER"]["Urinals"]
-        elif "cocina" in tipo or "kitchen" in tipo: baseline = EDGE_BASELINES["WATER"]["KitchenFaucets"]
-        else: baseline = EDGE_BASELINES["WATER"]["Faucets"]
-
-        saving = ((baseline - flow) / baseline) * 100 if baseline > 0 else 0
-        
-        item["baseline"] = baseline
-        item["saving_percent"] = round(saving, 1)
-        
-        total_flow += flow * qty
-        total_qty += qty
-        savings_detail.append(saving)
-
-    data["flujo_promedio"] = round(total_flow / total_qty, 2) if total_qty > 0 else 0
-    data["ahorro_global_estimado"] = round(sum(savings_detail) / len(savings_detail), 1) if savings_detail else 0
-    data["cumple_edge"] = data["ahorro_global_estimado"] >= 20 # EDGE requires 20% savings
+    # ── Cálculos Determinísticos Desacoplados (GPT Punto 11) ──
+    from app.services.edge_engineering import engineering
+    aparatos_raw = data.get("aparatos", [])
+    
+    # Delegamos al motor de ingeniería
+    calc_results = engineering.calculate_water_savings(aparatos_raw, EDGE_BASELINES["WATER"])
+    
+    # Fusionamos resultados
+    data.update(calc_results)
+    data["aparatos"] = calc_results["aparatos_procesados"]
     
     return data
 

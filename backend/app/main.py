@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse as StarletteFileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import logging
 from app.core.config import ROOT_DIR, MONGO_URL, logger, CORS_ORIGINS
@@ -9,6 +12,11 @@ from app.db.database import udb, client
 from app.api.api_router import api_router
 
 app = FastAPI(title="EDGE Document Processor API v2")
+
+# STEP 3: Rate Limiting Middleware
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/min"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Setup CORS - Read from environment
 if CORS_ORIGINS and CORS_ORIGINS != "*":

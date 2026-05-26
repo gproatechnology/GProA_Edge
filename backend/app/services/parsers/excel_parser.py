@@ -2,10 +2,11 @@ import pandas as pd
 import json
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.services.parsers.base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
+
 
 class ExcelParser(BaseParser):
     """Parser especializado en hojas de cálculo e inventarios."""
@@ -17,8 +18,8 @@ class ExcelParser(BaseParser):
 
         try:
             excel_file = pd.ExcelFile(file_path)
-            sheets_data = {}
-            found_areas = []
+            sheets_data: Dict[str, Dict[str, Any]] = {}
+            found_areas: List[Dict[str, Any]] = []
 
             for sheet_name in excel_file.sheet_names:
                 df = pd.read_excel(file_path, sheet_name=sheet_name)

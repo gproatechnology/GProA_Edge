@@ -38,6 +38,7 @@ class FileResponse(BaseModel):
     modelo: Optional[str] = None
     areas: Optional[list] = None
     specialized_data: Optional[dict] = None
+    structured_summary: Optional[dict] = None
     consumption_kwh: Optional[float] = None
     cost: Optional[float] = None
     uploaded_at: str

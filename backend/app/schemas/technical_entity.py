@@ -47,6 +47,50 @@ class EntityType(str, Enum):
     CIRCUIT = "circuit"
 
 
+class EntityStatus(str, Enum):
+    CONFIRMED = "confirmed"     # Direct observation/extraction
+    INFERRED = "inferred"       # Derived by logic/AI
+    INCOMPLETE = "incomplete"   # Missing critical properties
+    CONTRADICTORY = "contradictory" # Conflicts found in reconciliation
+
+
+class AdjudicationStatus(str, Enum):
+    ADJUDICATED = "adjudicated"     # Chosen as final truth
+    AMBIGUOUS = "ambiguous"         # Conflicts require manual review
+    REJECTED = "rejected"           # Evidence discarded by dominance policy
+    PENDING = "pending"             # Awaiting arbitration
+
+
+class ArbitrationResult(BaseModel):
+    """Detailed reasoning behind a truth adjudication decision (TAL v1.0)."""
+    decision: AdjudicationStatus
+    winning_source: str
+    dominant_status: EntityStatus
+    rejected_sources: List[str] = Field(default_factory=list)
+    logic_applied: str
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
+
+class RelationshipType(str, Enum):
+    ILLUMINATES = "illuminates"
+    FEEDS = "feeds"
+    CONNECTED_TO = "connected_to"
+    LOCATED_IN = "located_in"
+    PART_OF = "part_of"
+    CONTROLS = "controls"
+    SUPPLIES = "supplies"
+    REFERENCES = "references"
+
+
+class RelationshipStatus(str, Enum):
+    FACT = "fact"               # Observed relationship
+    INFERENCE = "inference"     # Logical derivation
+    HYPOTHETICAL = "hypothetical" # AI suggestion / Low confidence
+
+
+SCHEMA_VERSION = "1.0"
+
+
 class Provenance(BaseModel):
     """Complete provenance tracking for auditability and traceability."""
     source_file: str
@@ -57,31 +101,64 @@ class Provenance(BaseModel):
     extraction_method: str
     extracted_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     file_hash: Optional[str] = None
+    schema_version: str = Field(default=SCHEMA_VERSION)
+
+
+class RawDataProposal(BaseModel):
+    """Temporary structure for parsers to propose data before official Entity construction."""
+    type: EntityType
+    properties: Dict[str, Any]
+    provenance: Provenance
+    coordinates: Optional[Dict[str, Any]] = None
+    confidence: float = 0.90
+    measure: Optional[MeasureType] = None
+    discipline: Optional[Discipline] = None
+    semantic_evidence: Optional[Dict[str, Any]] = Field(default=None, description="Semantic classification evidence")
 
 
 class TechnicalEntity(BaseModel):
-    """Universal technical entity from any source file."""
-    entity_id: str = Field(default="", description="Semantic ID (LUM-ARCH-001, PAN-ELEC-001)")
-    type: str = Field(default="dimension", description="Type of technical entity")
+    """Universal technical entity - The Engineering Compiler's Single Source of Truth."""
+    uid: str = Field(description="Unique identifier (e.g., LUM-ARCH-001)")
+    type: EntityType = Field(description="Type of technical entity")
+    status: EntityStatus = Field(default=EntityStatus.CONFIRMED, description="UAKG Status")
+    adjudication: Optional[ArbitrationResult] = Field(default=None, description="TAL Adjudication Result")
     measure: MeasureType = Field(default=MeasureType.GENERAL, description="EDGE measure classification")
     discipline: Discipline = Field(default=Discipline.DESIGN, description="Engineering discipline")
     provenance: Provenance
     coordinates: Optional[Dict[str, Any]] = Field(default=None, description="Geometry/bbox")
-    properties: Dict[str, Any] = Field(default_factory=dict, description="Measured properties")
-    confidence: float = Field(ge=0.0, le=1.0, default=0.95, description="Extraction confidence")
-    validation_status: Optional[str] = Field(default=None, description="Cross-validation status")
-    semantic_metadata: Dict[str, Any] = Field(default_factory=dict, description="Semantic info")
+    properties: Dict[str, Any] = Field(default_factory=dict, description="Technical properties")
+    confidence: float = Field(ge=0.0, le=1.0, default=0.95, description="Extraction confidence score")
+    validation_status: Optional[str] = Field(default=None, description="Current validation state")
+    semantic_metadata: Dict[str, Any] = Field(default_factory=dict, description="Contextual semantic info")
+    schema_version: str = Field(default=SCHEMA_VERSION)
+    processing_history: List[Dict[str, Any]] = Field(default_factory=list, description="Audit log of changes")
+    relations: List[Dict[str, Any]] = Field(default_factory=list, description="Semantic relationships to other entities")
     
-    model_config = {"populate_by_name": True}
-    
-    def __init__(self, **data):
-        if not data.get('entity_id') and not data.get('id'):
-            from app.services.semantic_id import id_generator
-            entity_type = data.get('type', 'dimension')
-            data['entity_id'] = id_generator.generate(entity_type, data.get('properties'))
-        super().__init__(**data)
-    
-    model_config = {"populate_by_name": True}
+    model_config = {
+        "populate_by_name": True,
+        "populate_by_alias": True,
+        "frozen": False 
+    }
+
+
+class Relationship(BaseModel):
+    """UAKG Connection between technical entities with uncertainty awareness."""
+    uid: str = Field(alias="id")
+    type: RelationshipType
+    status: RelationshipStatus = Field(default=RelationshipStatus.FACT)
+    source_uid: str = Field(alias="source_entity_id")
+    target_uid: str = Field(alias="target_entity_id")
+    source_file: str
+    properties: Dict[str, Any] = Field(default_factory=dict)
+    confidence: float = Field(ge=0.0, le=1.0, default=0.95)
+    validation_status: Optional[str] = None
+    schema_version: str = Field(default=SCHEMA_VERSION)
+
+    model_config = {
+        "populate_by_name": True,
+        "populate_by_alias": True
+    }
+
 
 
 class SpatialBounds(BaseModel):

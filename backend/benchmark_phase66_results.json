@@ -1,0 +1,153 @@
+{
+  "benchmark_results": [
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 10,
+      "duration_ms": 3.134,
+      "memory_kb": 20,
+      "node_count": 10,
+      "edge_count": 13,
+      "speedup": 0.37396298659859606
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 10,
+      "duration_ms": 1.172,
+      "memory_kb": 14,
+      "node_count": 10,
+      "edge_count": 13,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 25,
+      "duration_ms": 7.414,
+      "memory_kb": 48,
+      "node_count": 25,
+      "edge_count": 39,
+      "speedup": 0.24844888049635827
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 25,
+      "duration_ms": 1.842,
+      "memory_kb": 41,
+      "node_count": 25,
+      "edge_count": 39,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 50,
+      "duration_ms": 13.957,
+      "memory_kb": 105,
+      "node_count": 50,
+      "edge_count": 85,
+      "speedup": 0.7407035895966181
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 50,
+      "duration_ms": 10.338,
+      "memory_kb": 99,
+      "node_count": 50,
+      "edge_count": 85,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 100,
+      "duration_ms": 103.996,
+      "memory_kb": 229,
+      "node_count": 100,
+      "edge_count": 179,
+      "speedup": 0.167919919996923
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 100,
+      "duration_ms": 17.463,
+      "memory_kb": 226,
+      "node_count": 100,
+      "edge_count": 179,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 200,
+      "duration_ms": 300.84,
+      "memory_kb": 485,
+      "node_count": 200,
+      "edge_count": 371,
+      "speedup": 0.1724139077250366
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 200,
+      "duration_ms": 51.869,
+      "memory_kb": 486,
+      "node_count": 200,
+      "edge_count": 371,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 500,
+      "duration_ms": 2130.85,
+      "memory_kb": 1275,
+      "node_count": 500,
+      "edge_count": 955,
+      "speedup": 0.10239153389492457
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 500,
+      "duration_ms": 218.181,
+      "memory_kb": 1275,
+      "node_count": 500,
+      "edge_count": 955,
+      "speedup": 0.0
+    },
+    {
+      "stage": "adjacency",
+      "variant": "naive",
+      "room_count": 1000,
+      "duration_ms": 6292.841,
+      "memory_kb": 2601,
+      "node_count": 1000,
+      "edge_count": 1936,
+      "speedup": 0.052280361127827635
+    },
+    {
+      "stage": "adjacency",
+      "variant": "optimized",
+      "room_count": 1000,
+      "duration_ms": 328.992,
+      "memory_kb": 2601,
+      "node_count": 1000,
+      "edge_count": 1936,
+      "speedup": 0.0
+    }
+  ],
+  "complexity_analysis": {
+    "detected_bottlenecks": [],
+    "speedup_evidence": []
+  },
+  "recommendations": [
+    "Replace AdjacencyDetector with OptimizedAdjacencyDetector",
+    "Use R-tree spatial index for graphs > 100 nodes",
+    "Consider k-d tree for uniform distributions"
+  ]
+}

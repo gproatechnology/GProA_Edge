@@ -48,10 +48,10 @@ async def _run_batch_processing(job_id: str, files: list):
                 job["current_step"] = f"Procesando concurrentemente: {f.get('filename', 'unknown')}"
                 logger.info(f"[{job_id}] Starting file {i+1}/{len(files)}: {f.get('filename')}")
                 
-                # Aumentamos el timeout a 120s porque al paralelizar, la CPU se divide y un archivo puede demorar un poco mas en terminos absolutos
+                # Timeout de 300s para PDFs grandes (hasta 7MB). El parser analiza texto, tablas, áreas y geometría completa
                 result = await asyncio.wait_for(
                     process_single_file_pipeline(f, job_id),
-                    timeout=120.0
+                    timeout=300.0
                 )
                 logger.info(f"[{job_id}] Completed file {i+1}/{len(files)}: {f.get('filename')}")
             except asyncio.TimeoutError:

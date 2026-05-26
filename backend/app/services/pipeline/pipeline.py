@@ -9,9 +9,9 @@ from .stages import (
     FileIngestionStage, ParsingStage, EntityExtractionStage,
     EntityNormalizationStage, IdentityResolutionStage, RelationshipInferenceStage,
     SpatialAnalysisStage, ValidationStage, CrossDocumentReconciliationStage,
-    ComplianceScoringStage, ReportingStage
+    TruthArbitrationStage, ComplianceScoringStage, ReportingStage
 )
-from .contracts import StageResult
+from .contracts import StageResult, StageStatus
 from .events import PipelineEvent, PipelineEventType, event_bus
 from .artifacts import artifact_store
 
@@ -36,12 +36,13 @@ class ProcessingPipeline:
             SpatialAnalysisStage(),
             ValidationStage(),
             CrossDocumentReconciliationStage(),
+            TruthArbitrationStage(),
             ComplianceScoringStage(),
             ReportingStage(),
         ]
     
-    async def run(self, files: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Execute full pipeline."""
+    async def run(self, files: List[Dict[str, Any]], use_cache: bool = True) -> Dict[str, Any]:
+        """Execute full pipeline with Semantic GC and Inter-stage Caching (GPT Point 10 & 13)."""
         self.context["files"] = files
         
         event_bus.emit(PipelineEvent(
@@ -51,14 +52,42 @@ class ProcessingPipeline:
         ))
         
         for stage in self._stages:
+            # ── INTER-STAGE CACHING (GPT Point 13) ──
+            if use_cache:
+                cached_data = artifact_store.load(self.project_id, f"{stage.name}.json", self.revision)
+                if cached_data:
+                    logger.info(f"🚀 Cache hit: Skipping stage '{stage.name}' for project {self.project_id}")
+                    # Update context with cached data
+                    for key, value in cached_data.items():
+                        if key not in self.context:
+                            self.context[key] = value
+                    
+                    # Create a mock result for the summary
+                    result = StageResult(
+                        stage_name=stage.name,
+                        status=StageStatus.COMPLETED,
+                        output=cached_data,
+                        confidence=1.0, # Cached results are trusted
+                        execution_time_ms=0
+                    )
+                    self._stage_results.append(result)
+                    continue
+
             result = await stage.execute(self.context)
             self._stage_results.append(result)
             
+            # Update context with stage output
             for key, value in result.output.items():
                 if key not in self.context:
                     self.context[key] = value
             
             self._persist_artifact(stage.name, result.output)
+            
+            # ── SEMANTIC GC (GPT Point 10) ──
+            if stage.name == "entity_extraction":
+                if "parsed" in self.context:
+                    logger.debug("Semantic GC: Clearing 'parsed' data from pipeline context.")
+                    del self.context["parsed"]
         
         event_bus.emit(PipelineEvent(
             type=PipelineEventType.PIPELINE_COMPLETED,

@@ -36,7 +36,7 @@ def parse(file_path: str) -> Dict[str, Any]
 def get_metadata(file_path: str) -> Dict[str, Any]
 ```
 
-### Extracción
+### Campos Retornados
 
 | Campo | Descripción |
 |-------|------------|
@@ -52,6 +52,10 @@ def get_metadata(file_path: str) -> Dict[str, Any]
 - **Heurística de layout**: Si el archivo contiene "layout", "plano", "drawing", "elevation" → salta tablas
 - **Detección de tablas**: Usa `page.find_tables()` de PyMuPDF (más rápido que pdfplumber)
 - **Parámetros técnicos**: RegEx para Watts, Lumens, SHGC, U-Value
+- **Filtrado de nombres (SPRINT Semantic Precision)**: 
+  - Rechaza etiquetas truncadas ≤ 2 caracteres como OCR noise
+  - Filtra valores numéricos puros (bleedthrough) que no son espacios válidos
+  - Rechaza valores > 10000 m² como GLOBAL_AREA (no espacios)
 
 ---
 
@@ -70,7 +74,7 @@ def extract_dimensions(file_path: str, layer_filter: str = None) -> list
 def extract(file_path: str) -> ExtractionResult
 ```
 
-### Extracción
+### Campos Retornados (parse)
 
 | Campo | Descripción |
 |-------|------------|
@@ -82,6 +86,13 @@ def extract(file_path: str) -> ExtractionResult
 | `entities` | Conteo de polylines, lines, texts |
 | `areas` | Áreas calculadas de polilíneas, círculos, hatch |
 | `suggested_category` | ENERGY, WATER, DESIGN (por capas) |
+
+### Métodos Adicionales
+
+| Método | Descripción |
+|--------|------------|
+| `extract()` | Retorna `ExtractionResult` con entidades estandarizadas |
+| `extract_dimensions()` | Lista cotas/dimensiones con coordenadas |
 
 ### Lógica Especial
 
@@ -107,7 +118,7 @@ def parse(file_path: str) -> Dict[str, Any]
 def get_metadata(file_path: str) -> Dict[str, Any]
 ```
 
-### Extracción
+### Campos Retornados
 
 | Campo | Descripción |
 |-------|------------|
@@ -115,6 +126,7 @@ def get_metadata(file_path: str) -> Dict[str, Any]
 | `sheet_count` | Número de hojas |
 | `sheets` | Lista de nombres de hojas |
 | `areas` | Áreas detectadas (nombre, m², fuente) |
+| `content_text` | Texto plano de todas las hojas (para IA) |
 | `suggested_category` | "DESIGN" si contiene "AREA" o "BREAKDOWN" |
 | `specialized_data` | Tipo y status de extracción |
 
@@ -139,14 +151,17 @@ def parse(file_path: str) -> Dict[str, Any]
 def get_metadata(file_path: str) -> Dict[str, Any]
 ```
 
-### Extracción
+### Campos Retornados
 
 | Campo | Descripción |
 |-------|------------|
 | `format` | "DOCX" |
+| `paragraph_count` | Total de párrafos |
 | `paragraphs` | Lista de párrafos |
+| `table_count` | Total de tablas |
 | `tables` | Tablas detectadas |
 | `content_text` | Texto completo |
+| `metadata` | Metadatos del documento (autor, fecha, título)
 
 ---
 
@@ -163,24 +178,40 @@ Extrae **cotas específicas** de archivos DXF para validación de medidas.
 ### Métodos
 
 ```python
-def extract_dimensions(file_path: str, layer_filter: str = None) -> list
+def parse(file_path: str) -> Dict[str, Any]
+def get_metadata(file_path: str) -> Dict[str, Any]
+def extract(file_path: str) -> ExtractionResult
+def get_dimensions_by_layer(file_path: str, layer_name: str) -> List[Dict[str, Any]]
 ```
 
-### Retorna
+### Retorna (parse)
 
 ```python
-[
-    {
-        "value": 2.50,        # Valor de la cota
-        "layer": "COTAS",     # Capa
-        "type": 0,           # Tipo de cota
-        "handle": "ABC123",    # Handle AutoCAD
-        "origin": [x, y],    # Origen
-        "point1": [x, y],    # Punto 1
-        "point2": [x, y]     # Punto 2
-    }
-]
+# parse() retorna:
+{
+    "format": "DXF",
+    "version": "AC1027",
+    "units": "Millimeters",
+    "layers": ["0", "COTAS", ...],
+    "dimensions": [
+        {
+            "value": 2.50,        # Valor de la cota
+            "layer": "COTAS",     # Capa
+            "type": 0,           # Tipo de cota (0=Aligned, 1=Rotated, 2=Radial, etc.)
+            "type_name": "Aligned",
+            "handle": "ABC123",   # Handle AutoCAD
+            "points": {           # Coordenadas estructuradas
+                "origin": [x, y],
+                "defpoint1": [x, y],
+                "defpoint2": [x, y]
+            }
+        }
+    ],
+    "dimension_count": 15
+}
 ```
+
+> **Nota:** El método `extract()` retorna `ExtractionResult` con entidades estandarizadas listas para el EntityBuilder.
 
 ---
 
@@ -197,8 +228,30 @@ Procesa imágenes para análisis multimodal (CAD como imagen).
 ### Métodos
 
 ```python
-def process_image(file_path: str) -> Dict[str, Any]
+async def process(file_path: str, hint_measure: str = "") -> Dict[str, Any]
 def convert_pdf_to_images(pdf_path: str, dpi: int = 300) -> list
+```
+
+### Retorna (process)
+
+```python
+{
+    "classification": {
+        "category_edge": "ENERGY|WATER|MATERIALS|DESIGN",
+        "measure_edge": "EEMXX|WEMXX|etc",
+        "doc_type": "ficha_tecnica|fotografia|plano",
+        "confidence": 0.0-1.0,
+        "drawing_title": "string detectado en el cajetin"
+    },
+    "extracted_parameters": {
+        "watts": null,
+        "lumens": null,
+        "marca": "string",
+        "modelo": "string"
+    },
+    "detected_text": "Resumen del texto detectado",
+    "message": "Descripción de lo encontrado"
+}
 ```
 
 ---

@@ -1,5 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, TypedDict
+
+
+class ParserResult(TypedDict, total=False):
+    format: str
+    error: str
+    content_text: str
+
 
 class BaseParser(ABC):
     """Clase base para todos los parsers determinísticos."""

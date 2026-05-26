@@ -66,7 +66,7 @@ class RuleDSLParser:
         if then_action:
             rel_type = then_action.get("type", "")
             rel_enum = RelationshipType(rel_type)
-            rels = self.registry.get_neighborhood(entity.id)
+            rels = self.registry.get_neighborhood(entity.uid)
             rel_types = [r.type for r in rels]
 
             if rel_enum in rel_types:
@@ -78,7 +78,7 @@ class RuleDSLParser:
             return RuleResult(
                 passed=False,
                 message=f"Missing required relationship: {rel_type}",
-                entity_id=entity.id,
+                entity_id=entity.uid,
                 severity=rule.severity
             )
 

@@ -1,10 +1,11 @@
 from docx import Document
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.services.parsers.base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
+
 
 class DocxParser(BaseParser):
     """Parser especializado en documentos de Word (.docx)."""
@@ -18,18 +19,18 @@ class DocxParser(BaseParser):
             doc = Document(file_path)
             
             # Extraer texto de párrafos
-            full_text = []
+            full_text: List[str] = []
             for para in doc.paragraphs:
                 if para.text.strip():
                     full_text.append(para.text.strip())
             
             # Extraer datos de tablas
-            tables_data = []
+            tables_data: List[List[List[str]]] = []
             for table in doc.tables:
-                table_rows = []
+                table_rows: List[List[str]] = []
                 for row in table.rows:
                     row_data = [cell.text.strip() for cell in row.cells]
-                    if any(row_data): # Evitar filas vacías
+                    if any(row_data):  # Evitar filas vacías
                         table_rows.append(row_data)
                 if table_rows:
                     tables_data.append(table_rows)

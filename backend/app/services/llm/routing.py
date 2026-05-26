@@ -22,6 +22,20 @@ class FallbackProvider:
         self.primary_name = primary_name
         self.secondary_name = secondary_name
 
+    async def generate(self, prompt: str) -> str:
+        try:
+            return await self.primary.generate(prompt)
+        except Exception as e:
+            logger.warning(f"Primary provider {self.primary_name} failed for generate, falling back to {self.secondary_name}: {e}")
+            return await self.secondary.generate(prompt)
+
+    async def generate_json(self, prompt: str) -> dict:
+        try:
+            return await self.primary.generate_json(prompt)
+        except Exception as e:
+            logger.warning(f"Primary provider {self.primary_name} failed for generate_json, falling back to {self.secondary_name}: {e}")
+            return await self.secondary.generate_json(prompt)
+
     async def classify(self, text: str):
         try:
             return await self.primary.classify(text)
@@ -43,27 +57,12 @@ class FallbackProvider:
             logger.warning(f"Primary provider {self.primary_name} failed for infer_relationship, falling back to {self.secondary_name}: {e}")
             return await self.secondary.infer_relationship(context)
 
-    # If there are other methods like generate, generate_json, they can be added similarly.
-    # For now we only need the three main methods used in BaseLLMProvider.
-
 class LLMRouter:
     def __init__(self):
-        self.ollama_provider = OllamaProvider()
         self.gemini_provider = GeminiProvider()
 
     def route(self, task_type: TaskType):
         """
-        Route the task to the appropriate provider with fallback.
-        
-        NOTA: Después de pruebas (24 Mayo 2026), Ollama (llama3.2) es muy lento (~4.5 min)
-        y no devuelve JSON estructurado correctamente. Gemini es más rápido y confiable.
-        
-        Por defecto: Gemini primary, Ollama fallback.
+        Route all tasks to Gemini only (no Ollama fallback).
         """
-        # Todas las tareas usan Gemini como primary, Ollama como fallback
-        return FallbackProvider(
-            primary=self.gemini_provider,
-            secondary=self.ollama_provider,
-            primary_name="Gemini",
-            secondary_name="Ollama"
-        )
+        return self.gemini_provider
