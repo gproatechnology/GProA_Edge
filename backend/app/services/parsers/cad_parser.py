@@ -279,9 +279,14 @@ class CADParser(BaseParser):
         # 3. HATCH (Sombreados) - Muy común para áreas
         for hatch in msp.query('HATCH'):
             try:
-                area = hatch.dxf.area
+                area = None
+                try:
+                    area = hatch.dxf.area
+                except AttributeError:
+                    pass
+                
+                # Calcular área desde los bordes usando shoelace (cuando area no está disponible)
                 if not area:
-                    # Calcular área desde los bordes usando shoelace
                     for path in hatch.paths:
                         if hasattr(path, 'edges'):
                             pts = []
@@ -297,13 +302,14 @@ class CADParser(BaseParser):
                                         "area_m2": area,
                                         "type": "hatch"
                                     })
+                                break  # Solo procesar el primer path válido
                 elif area and area > 0.1:
                     areas.append({
                         "nombre": f"Hatch (Sombreado) Capa: {hatch.dxf.layer}",
                         "area_m2": area,
                         "type": "hatch"
                     })
-            except: continue
+            except Exception: continue
             
 # 4. MPOLYGON
         for mpoly in msp.query('MPOLYGON'):

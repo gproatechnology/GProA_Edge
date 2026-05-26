@@ -15,6 +15,13 @@ from .ground_truth import GroundTruthDataset, GroundTruthSpace, create_office_gr
 from .graph_comparator import SpatialGraphComparator, comparator
 from .node_alignment import NodeMatcher, NodeAlignmentEvaluator, node_matcher, alignment_evaluator
 from .scale_extensions import FloorProcessor, LegacyPlanCleaner, IndustrialBuildingAdapter
+# Topological Precision Initiative components
+from .contour_tracer import ContourTracer
+from .hole_detector import HoleDetector
+from .topology_validator import TopologyValidator, TopologyStatus
+from .polygon_simplifier import PolygonSimplifier
+from .boundary_semantics import BoundarySemantics
+from .precision_metrics import PrecisionMetrics
 
 __all__ = [
     "SpatialNode",
@@ -48,4 +55,12 @@ __all__ = [
     "FloorProcessor",
     "LegacyPlanCleaner",
     "IndustrialBuildingAdapter",
+    # Topological Precision Initiative
+    "ContourTracer",
+    "HoleDetector",
+    "TopologyValidator",
+    "TopologyStatus",
+    "PolygonSimplifier",
+    "BoundarySemantics",
+    "PrecisionMetrics",
 ]

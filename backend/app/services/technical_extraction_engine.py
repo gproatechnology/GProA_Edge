@@ -58,8 +58,8 @@ class TechnicalExtractionEngine:
         return result
     
     async def _parse_dxf(self, file_path: str, content: Optional[str] = None) -> ExtractionResult:
-        """Extract from DXF files using ezdxf."""
-        from app.services.parsers.dxf_dimension_parser import DxfDimensionParser
+        """Extract from DXF files using ezdxf - includes areas and dimensions."""
+        from app.services.parsers.cad_parser import CADParser
         from app.schemas.technical_entity import Provenance
         from datetime import datetime
 
@@ -70,41 +70,38 @@ class TechnicalExtractionEngine:
         )
 
         try:
-            parser = DxfDimensionParser()
+            parser = CADParser()
             dxf_data = parser.parse(file_path)
 
-            for dim in dxf_data.get("dimensions", []):
+            # Extract areas as entities
+            for area in dxf_data.get("areas", []):
                 provenance = Provenance(
                     source_file=Path(file_path).name,
-                    source_layer=dim.get("layer"),
-                    source_coordinates=dim.get("points"),
-                    parser_used="DxfDimensionParser",
-                    extraction_method="dimension"
+                    source_layer=area.get("nombre"),
+                    parser_used="CADParser",
+                    extraction_method="geometry"
                 )
                 
-                # Propose raw data
                 proposal = RawDataProposal(
-                    type=EntityType.DIMENSION,
+                    type=EntityType.AREA,
                     properties={
-                        "value": dim.get("value"),
-                        "dim_type": dim.get("type_name"),
-                        "layer": dim.get("layer")
+                        "area_m2": area.get("area_m2"),
+                        "type": area.get("type"),
+                        "layer": area.get("nombre")
                     },
                     provenance=provenance,
-                    coordinates=dim.get("points"),
-                    confidence=ExtractionConfidence.DXF_DIMENSION.value,
+                    confidence=ExtractionConfidence.DXF_GEOMETRY.value,
                     measure=MeasureType.DESIGN,
                     discipline=Discipline.ARCHITECTURAL
                 )
                 
-                # Builder constructs the official entity
                 result.entities.append(builder.build(proposal))
 
             result.source_metadata = {
                 "layers": dxf_data.get("layers", []),
                 "units": dxf_data.get("units"),
                 "version": dxf_data.get("version"),
-                "dimension_count": dxf_data.get("dimension_count", 0)
+                "areas": dxf_data.get("areas", [])
             }
 
         except Exception as e:
@@ -154,6 +151,7 @@ class TechnicalExtractionEngine:
             result.source_metadata = {
                 "layers": cad_data.get("layers", []),
                 "units": cad_data.get("units"),
+                "areas": cad_data.get("areas", []),
                 "geometry": cad_data.get("entities", {})
             }
 
@@ -182,7 +180,8 @@ class TechnicalExtractionEngine:
             result.source_metadata = {
                 "pages": pdf_data.get("text_summary", {}).get("total_pages", 0),
                 "chars": pdf_data.get("text_summary", {}).get("total_chars", 0),
-                "content_text": pdf_data.get("content_text", "")[:500]
+                "content_text": pdf_data.get("content_text", "")[:500],
+                "polygons": pdf_data.get("polygons", [])
             }
 
             # Extract entities from detected areas with semantic evidence

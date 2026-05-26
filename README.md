@@ -531,7 +531,14 @@ GProA_EOSIS_Edge/
 │   │   │   ├── edge_processors.py        # Procesadores IA por medida
 │   │   │   ├── parsers/                 # PDF, CAD, Excel
 │   │   │   ├── ai_service.py            # Servicio de IA
-│   │   │   └── assistant_service.py      # Chat contextual
+│   │   │   ├── assistant_service.py     # Chat contextual
+│   │   │   └── spatial_reasoning/       # Topological Precision Initiative
+│   │   │       ├── contour_tracer.py    # Precise polygon reconstruction
+│   │   │       ├── hole_detector.py     # Nested polygon detection
+│   │   │       ├── topology_validator.py # Geometry integrity validation
+│   │   │       ├── polygon_simplifier.py # Douglas-Peucker simplification
+│   │   │       ├── boundary_semantics.py  # Shared edge detection
+│   │   │       └── precision_metrics.py  # Contour fidelity metrics
 │   │   ├── db/
 │   │   │   └── database.py         # UnifiedDB (SQLite/MongoDB)
 │   │   ├── core/
@@ -1076,6 +1083,8 @@ DEMO_MODE=false
 - [x] Chat Asistente con contexto real del proyecto
 - [x] Procesadores especializados para EEM22, EEM09, EEM16, WEM01, WEM02
 - [x] Soporte Unifilar / Cuadro de Cargas
+- [x] Spatial Reasoning Engine (reconstrucción geometría implícita)
+- [x] Topological Precision Initiative (contour tracing, holes, validation)
 
 ### 🔜 v2.1 — Próximos Pasos
 
@@ -1085,11 +1094,27 @@ DEMO_MODE=false
 - [ ] Exportación a formato EDGE App (.xlsx certificador)
 - [ ] RBAC completo (Admin, Auditor, Consultor, Cliente)
 
+### 🏗️ Phase 8.2 — Topological Precision Initiative (SDD)
+
+**Objetivo:** Transformar polígonos "bounding box" en geometría topológicamente precisa desde planos arquitectónicos reales.
+
+- [x] `contour_tracer.py` — Reconstrucción de contornos reales desde vector linework
+- [x] `hole_detector.py` — Detección de voids, courtyards y polígonos anidados  
+- [x] `topology_validator.py` — Validación de self-intersections y winding order
+- [x] `polygon_simplifier.py` — Simplificación Douglas-Peucker con preservación de topología
+- [x] `boundary_semantics.py` — Detección de shared edges sin inferencia arquitectónica
+- [x] `precision_metrics.py` — Métricas de fidelidad geométrica (Hausdorff, area preservation)
+
+**Logros actuales (Mayo 2026):**
+- PDF: 777 polígonos → 777 nodos → 597 edges (74,738 vector drawings)
+- Adjacency O(n²) → O(n*k): 14.6x speedup (4761ms → 327ms)
+- Sistema sobrevive planos reales sin inferencia semántica arquitectónica
+
 ### 🏢 v3.0 — Enterprise
 
 - [ ] Multi-tenant con aislamiento de datos por organización
 - [ ] Integración Computer Vision para CAD determinístico
-- [ ] API pública para integraciones ERP / BIM
+- [ ] **API pública para integraciones ERP / BIM/IFC** (Topología precisa disponible)
 - [ ] SharePoint Sync
 
 ---

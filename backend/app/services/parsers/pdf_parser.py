@@ -16,6 +16,7 @@ class PDFParser(BaseParser):
             doc = fitz.open(file_path)
             full_text = ""
             pages_data = []
+            polygons = []
             
             # Heurística: ¿Es un plano arquitectónico?
             filename_lower = file_path.lower()
@@ -37,6 +38,11 @@ class PDFParser(BaseParser):
                     "page": page_num + 1,
                     "text_length": len(text),
                 })
+                
+                # P0 FIX: Extract vector geometry for architectural drawings
+                if is_layout:
+                    page_polygons = self._extract_vector_polygons(page)
+                    polygons.extend(page_polygons)
             
             # Limpiar texto para Gemini (quitar excesos de saltos de línea y ruido espacial)
             full_text = re.sub(r'\n{3,}', '\n\n', full_text).strip()
@@ -55,6 +61,7 @@ class PDFParser(BaseParser):
                 "extracted_parameters": self._extract_technical_params(full_text),
                 "tables": tables_data,
                 "content_text": full_text,
+                "polygons": polygons,
                 "text_summary": {
                     "total_chars": len(full_text),
                     "detected_areas_from_text": self._extract_areas_from_text(full_text, tables_data)
@@ -259,3 +266,49 @@ class PDFParser(BaseParser):
                         "bounds": [rect.x0, rect.y0, rect.x1, rect.y1]
                     })
         return detected
+    
+    def _extract_vector_polygons(self, page) -> List[Dict[str, Any]]:
+        """Extrae polígonos desde paths vectoriales usando get_drawings()."""
+        polygons = []
+        
+        try:
+            drawings = list(page.get_drawings())
+            
+            for i, drawing in enumerate(drawings):
+                # Solo procesar paths rellenos (fill) o cierres explícitos
+                if not (drawing.get("fill") or drawing.get("closePath")):
+                    continue
+                    
+                rect = drawing.get("rect")
+                if not rect:
+                    continue
+                
+                # Calcular área del rectángulo bounding box
+                # Escala: 1pt² ≈ 0.05 m² en planos arquitectónicos
+                area_pts = rect.width * rect.height
+                area_m2 = area_pts * 0.05
+                
+                if area_m2 > 1.0:
+                    polygon = {
+                        "type": "pdf-polygon",
+                        "area_m2": round(area_m2, 2),
+                        "bounds": {
+                            "min_x": rect.x0,
+                            "min_y": rect.y0,
+                            "max_x": rect.x1,
+                            "max_y": rect.y1
+                        },
+                        "points": [
+                            [rect.x0, rect.y0],
+                            [rect.x1, rect.y0],
+                            [rect.x1, rect.y1],
+                            [rect.x0, rect.y1]
+                        ],
+                        "id": f"pdf-path-{i}",
+                        "source": "pdf_vector"
+                    }
+                    polygons.append(polygon)
+        except Exception as e:
+            logger.warning(f"Error extrayendo polígonos vectoriales: {e}")
+        
+        return polygons

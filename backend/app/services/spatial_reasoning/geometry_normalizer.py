@@ -172,6 +172,22 @@ def normalize_extraction_to_polygons(extraction_result) -> List[Dict[str, Any]]:
     if areas:
         polygons.extend(normalizer.normalize_dxf_areas(areas, layers))
     
+    # Get polygons from PDF vector geometry
+    pdf_polygons = getattr(extraction_result, 'get_polygons', lambda: extraction_result.source_metadata.get("polygons", []))()
+    if not pdf_polygons and hasattr(extraction_result, 'source_metadata'):
+        pdf_polygons = extraction_result.source_metadata.get("polygons", [])
+    if pdf_polygons:
+        for poly in pdf_polygons:
+            if poly.get("bounds") and poly.get("area_m2"):
+                polygons.append({
+                    "bounds": poly["bounds"],
+                    "points": poly.get("points", []),
+                    "area_m2": poly.get("area_m2", 0),
+                    "id": poly.get("id", "pdf-poly"),
+                    "type": "pdf-polygon",
+                    "source": "pdf_vector"
+                })
+    
     # Also check entities with coordinates
     for entity in extraction_result.entities:
         if hasattr(entity, 'coordinates') and entity.coordinates:
@@ -179,7 +195,6 @@ def normalize_extraction_to_polygons(extraction_result) -> List[Dict[str, Any]]:
             if isinstance(coords, dict) and "points" in coords:
                 points = coords.get("points", [])
                 if len(points) >= 3:
-                    # Calculate bounds from points
                     xs = [p[0] if isinstance(p, (list, tuple)) else p.get("x", 0) for p in points]
                     ys = [p[1] if isinstance(p, (list, tuple)) else p.get("y", 0) for p in points]
                     
