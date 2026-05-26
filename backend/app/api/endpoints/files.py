@@ -5,6 +5,7 @@ import uuid
 import asyncio
 import os
 import logging
+from pathlib import Path
 import magic
 from datetime import datetime, timezone
 from app.db.database import udb
@@ -78,27 +79,46 @@ async def upload_file(request: Request, project_id: str, file: UploadFile = File
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
-    UPLOAD_DIR = os.path.join("uploads")
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR)
+    UPLOAD_DIR = Path("uploads")
+    if not UPLOAD_DIR.exists():
+        UPLOAD_DIR.mkdir(parents=True)
 
     file_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename)[1].lower()
-    save_filename = f"{file_id}.{ext}"
-    file_path = os.path.join(UPLOAD_DIR, save_filename)
+    ext = Path(file.filename).suffix.lower() if file.filename else ".pdf"
+    # Fix: Ensure clean extension (prevent ..pdf or .pdf.pdf)
+    if ext.startswith('.'):
+        ext = ext.lstrip('.')
+    if ext:
+        ext = '.' + ext
+    else:
+        ext = '.pdf'  # Default fallback
+    save_filename = f"{file_id}{ext}"
+    file_path = (UPLOAD_DIR / save_filename).resolve()
     
-    # Guardar archivo fisico
+    # Guardar archivo físico
     with open(file_path, "wb") as f:
         f.write(content_bytes)
+    
+    # P0 FIX: Assert file exists before DB commit
+    if not file_path.exists():
+        raise HTTPException(status_code=500, detail=f"Failed to persist uploaded file: {file_path}")
+    
+    logger.info({
+        "event": "file_saved",
+        "original_name": file.filename,
+        "stored_path": str(file_path),
+        "exists": file_path.exists()
+    })
 
     # Solo intentar decodificar texto para archivos legibles (PDF, TXT, etc)
     text_content = ""
-    if ext in ["txt", "csv", "json", "md"]:
+    ext_str = str(ext)  # ext is already sanitized string like ".pdf"
+    if ext_str in [".txt", ".csv", ".json", ".md"]:
         try:
             text_content = content_bytes.decode("utf-8")
         except UnicodeDecodeError:
             text_content = content_bytes.decode("latin-1", errors="ignore")
-    elif ext == "pdf":
+    elif ext_str == ".pdf":
         # Placeholder for PDF text extraction if needed during upload
         text_content = f"[Archivo PDF: {file.filename}]"
     else:
@@ -109,7 +129,7 @@ async def upload_file(request: Request, project_id: str, file: UploadFile = File
         "project_id": project_id,
         "filename": file.filename,
         "file_size": len(content_bytes),
-        "file_path": file_path, # Guardamos la ruta real
+        "file_path": str(file_path), # Guardamos la ruta real como string
         "content_text": text_content,
         "status": "pending",
         "category_edge": None,

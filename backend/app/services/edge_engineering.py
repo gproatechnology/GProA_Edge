@@ -15,7 +15,10 @@ class EdgeEngineeringService:
     
     @staticmethod
     def calculate_lighting_efficiency(luminarias: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """EEM22: Calculate global efficacy (Lm/W)."""
+        """EEM22: Calculate global efficacy (Lm/W) excluding emergency fixtures."""
+        # SDD: Exclude emergency fixtures from average calculation
+        NON_EMERGENCY = [l for l in luminarias if not l.get("notas") or "emergencia" not in str(l.get("notas", "")).lower()]
+        
         total_lumens_weighted = 0
         total_watts_weighted = 0
         total_qty = 0
@@ -25,14 +28,21 @@ class EdgeEngineeringService:
             lumens = lum.get("lumens", 0.0) or 0.0
             watts = lum.get("watts", 0.0) or 0.0
             
-            total_lumens_weighted += lumens * qty
-            total_watts_weighted += watts * qty
-            total_qty += qty
-            
+            # Add efficacy field to all luminarias
             if watts > 0:
                 lum["eficiencia"] = round(lumens / watts, 2)
             else:
                 lum["eficiencia"] = 0.0
+        
+        # Calculate average ONLY from non-emergency fixtures
+        for lum in NON_EMERGENCY:
+            qty = lum.get("cantidad", 1) or 1
+            lumens = lum.get("lumens", 0.0) or 0.0
+            watts = lum.get("watts", 0.0) or 0.0
+            
+            total_lumens_weighted += lumens * qty
+            total_watts_weighted += watts * qty
+            total_qty += qty
 
         eficacia_global = round(total_lumens_weighted / total_watts_weighted, 2) if total_watts_weighted > 0 else 0
 
@@ -41,6 +51,7 @@ class EdgeEngineeringService:
             "total_lumens": total_lumens_weighted,
             "total_watts": total_watts_weighted,
             "total_luminarias": total_qty,
+            "luminarias_emergencia_excluidas": len(luminarias) - len(NON_EMERGENCY),
             "cumple_edge": eficacia_global >= 90.0,
             "luminarias_procesadas": luminarias
         }

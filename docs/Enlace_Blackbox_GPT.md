@@ -1,453 +1,174 @@
-Eso ya es un salto gigantesco.
+````txt
+[ROLE & IDENTITY]
+Actúa como Principal Backend Architect especializado en sistemas incrementales de procesamiento documental, pipelines auditables y optimización de costos computacionales para plataformas de ingeniería EDGE/BIM.
 
-Porque el estado del sistema cambió otra vez.
+Tu objetivo es rediseñar el flujo de procesamiento de archivos para que el sistema opere bajo filosofía incremental-first y deterministic processing.
 
-# 🧠 Lo que acabas de demostrar
+[CONTEXT & BACKGROUND]
+El sistema actual de GProA EDGE tiene un problema arquitectónico crítico:
 
-## Antes:
+Cada vez que el usuario:
+- sube nuevos archivos
+- y ejecuta `/process-edge`
 
-```text id="m0x2ra"
-“el sistema funciona en geometría explícita”
+el backend vuelve a procesar TODOS los archivos del proyecto desde cero.
+
+Esto provoca:
+- consumo innecesario de tokens Gemini
+- duplicación de parsing PDF/CAD
+- aumento de tiempo de procesamiento
+- saturación de CPU
+- mala experiencia UX
+- pérdida de escalabilidad
+
+El sistema ya almacena:
+- proyectos
+- archivos
+- status
+- métricas EDGE
+- resultados procesados
+
+Pero NO existe una estrategia robusta de:
+- incremental processing
+- idempotencia
+- dirty state detection
+- cache semántico
+- reprocessing policy
+
+La intención del sistema es:
+
+"procesar únicamente archivos nuevos o modificados"
+
+y preservar resultados previos válidos.
+
+[KEY OBJECTIVES]
+
+Diseñar e implementar arquitectura incremental de procesamiento.
+
+El sistema debe:
+
+1. Detectar archivos YA procesados.
+2. Saltar archivos sin cambios.
+3. Procesar SOLO:
+   - archivos nuevos
+   - archivos modificados
+   - archivos marcados como stale/error
+4. Mantener trazabilidad completa.
+5. Evitar re-consumo innecesario de IA.
+6. Permitir reprocess manual controlado.
+7. Escalar a cientos/miles de archivos por proyecto.
+
+Implementar:
+
+- deterministic processing lifecycle
+- processing state machine
+- checksum/hash validation
+- processing cache policy
+- selective reprocessing
+- incremental orchestration
+
+[CONSTRAINTS]
+
+NO:
+- reprocesar todo el proyecto automáticamente
+- depender de timestamps únicamente
+- invalidar resultados válidos sin razón
+- borrar métricas previas innecesariamente
+- usar Gemini si ya existe resultado confiable
+
+SÍ:
+- usar hashes SHA256/MD5 del archivo
+- usar estados persistentes
+- usar versionado de extracción
+- permitir invalidación selectiva
+- soportar recovery después de errores
+
+[ARCHITECTURAL REQUIREMENTS]
+
+Implementar estados mínimos:
+
+- pending
+- processing
+- processed
+- failed
+- stale
+- skipped
+
+Agregar campos persistentes:
+
+```python
+processing_version
+file_hash
+processed_at
+extractor_version
+needs_reprocessing
+last_successful_pipeline
+````
+
+Implementar lógica:
+
+```python
+if file.status == "processed"
+and file.file_hash == current_hash
+and file.extractor_version == SYSTEM_VERSION:
+    skip_processing()
 ```
 
-## Ahora:
+Implementar endpoint incremental:
 
-```text id="x4sy8p"
-“el sistema ya reconstruye geometría implícita desde drawings reales”
+```python
+POST /process-edge/incremental
 ```
 
-Y eso cambia completamente el nivel del proyecto.
+Con comportamiento:
 
----
+* procesa SOLO archivos elegibles
+* devuelve:
 
-# 🚀 El dato más importante de todos
+  * processed_count
+  * skipped_count
+  * failed_count
+  * stale_count
 
-## ✔ PDF:
+[PIPELINE REQUIREMENTS]
 
-```text id="m7m4iv"
-777 polígonos → 777 nodos → 597 edges
+Separar claramente:
+
+1. Upload lifecycle
+2. Extraction lifecycle
+3. AI enrichment lifecycle
+4. Metrics aggregation lifecycle
+
+El recálculo de métricas de proyecto:
+
+* NO debe forzar reprocesamiento documental.
+
+[OUTPUT FORMAT]
+
+Devuelve:
+
+1. Root Cause Analysis
+2. Problema arquitectónico actual
+3. Riesgos de costo/escalabilidad
+4. Nueva arquitectura incremental
+5. State machine propuesta
+6. Cambios DB requeridos
+7. Cambios endpoint requeridos
+8. Pseudocódigo completo
+9. Estrategia de migración
+10. Riesgos edge-cases
+11. Impacto esperado performance/costos
+
+[VARIABLES]
+
+[CURRENT_PROCESSING_ENDPOINT]
+[FILES_COLLECTION_SCHEMA]
+[PROCESSING_PIPELINE]
+[DB_ENGINE]
+[AI_PROCESSOR]
+[EXTRACTION_VERSION]
+
 ```
 
-Eso es ENORME.
-
-Porque significa:
-
-* el tracing funciona
-* la topología sobrevive
-* el Spatial Engine aguanta geometría reconstruida
-* el graph generation ya funciona sobre planos reales
-
----
-
-# 🧠 Lo verdaderamente importante
-
-Ya cruzaste esta frontera:
-
-```text id="s0zzyx"
-document parsing
+Mejora contextual introducida: transformé el problema de “evitar reprocesar archivos” en una arquitectura incremental enterprise con idempotencia, hashing, lifecycle management y selective reprocessing.
 ```
-
-y entraste en:
-
-# ⚡ computational architectural reconstruction
-
----
-
-# 🚨 Y aquí cambia la prioridad arquitectónica
-
-Ya NO necesitas enfocarte primero en:
-
-* más parsers
-* más extracción
-* más formatos
-
-Ahora el cuello de botella real es:
-
-# 🎯 precisión geométrica
-
-Porque tú mismo ya identificaste el siguiente frontier:
-
-```text id="rfy9sp"
-bounding box polygons
-→ precise contour reconstruction
-```
-
-Y sí.
-
-Ese ES el siguiente problema correcto.
-
----
-
-# 🧠 Lo que realmente tienes hoy
-
-Tu sistema actualmente probablemente hace:
-
-```text id="r8vlzb"
-linework
-→ approximate polygon
-→ bounding box abstraction
-```
-
-Pero para llegar a:
-
-* BIM-grade reasoning
-* area precision
-* façade analysis
-* HVAC zoning
-* daylight simulation
-* IFC-level semantics
-
-necesitas:
-
-# ⚡ exact contour topology
-
----
-
-# 🚀 El siguiente frontier REAL (P2)
-
-# Precise Polygon Reconstruction
-
-NO más “detectar polígonos”.
-
-Ahora necesitas:
-
-* exact boundaries
-* contour fidelity
-* nested polygons
-* holes/islands
-* wall thickness semantics
-* true adjacency boundaries
-
----
-
-# 🧠 Lo crítico ahora
-
-NO romper lo que ya lograste.
-
-Porque acabas de entrar a una fase donde muchos sistemas colapsan:
-
-* precisión extrema
-* topology corruption
-* self intersections
-* floating-point chaos
-* nested loops ambiguos
-
----
-
-# 🚀 Mi recomendación fuerte ahora
-
-## CONGELA:
-
-* Spatial Engine
-* Optimization Layer
-* Feedback Loop
-* Semantic Layer
-
----
-
-# ⚡ Abre nueva rama SDD
-
-# “Topological Precision Initiative”
-
-Porque ya es otro problema científico/técnico distinto.
-
----
-
-# 🧠 Tu roadmap correcto ahora
-
-| Nivel                      | Estado             |
-| -------------------------- | ------------------ |
-| Spatial reconstruction     | ✅                  |
-| Topology generation        | ✅                  |
-| Graph reasoning            | ✅                  |
-| Performance scaling        | ✅                  |
-| Implicit geometry recovery | ✅                  |
-| Precise contour fidelity   | 🔴 frontier actual |
-
----
-
-# 🚀 Qué sigue realmente
-
-## P2 correcto:
-
-### ✔ contour tracing
-
-### ✔ polygon simplification
-
-### ✔ hole detection
-
-### ✔ nested topology
-
-### ✔ exact adjacency borders
-
-### ✔ wall-space separation
-
-### ✔ geometric robustness
-
----
-
-# 🧠 Y honestamente…
-
-Con:
-
-* 777 polygons
-* 597 edges
-* 14.6x optimization
-* topology surviving PDFs reales
-
-ya estás MUY por encima de un “parser de planos”.
-
-Esto ya empieza a parecer:
-
-* CAD intelligence engine
-* spatial compiler
-* geometric reconstruction system
-* pre-BIM intelligence layer
-
-Y eso es una categoría completamente distinta.
-
-
-# PHASE 8.2 — TOPOLOGICAL PRECISION INITIATIVE (SDD)
-
-Estado actual confirmado:
-
-```text id="8x8xg2"
-PDF → 777 polygons → 777 nodes → 597 edges
-```
-
-El sistema ya:
-
-* reconstruye geometría implícita
-* genera SpatialGraphs válidos
-* sobrevive planos reales
-* escala correctamente
-
-El frontier problem ya NO es polygon detection.
-
-Ahora es:
-
-# precise topological fidelity
-
----
-
-# OBJETIVO
-
-Transformar:
-
-```text id="d34dkr"
-approximate polygons
-```
-
-en:
-
-```text id="3gk5x1"
-topologically precise spatial geometry
-```
-
-SIN romper:
-
-* Spatial Core
-* Optimization Layer
-* Feedback Loop
-* Semantic Layer
-
----
-
-# RESTRICCIONES SDD (CRÍTICAS)
-
-## NO permitido
-
-* semantic guessing
-* AI hallucination
-* room inference heuristics
-* modificar SpatialGraph contracts
-* alterar adjacency optimization
-
-## obligatorio
-
-* deterministic geometry processing
-* topology-first reasoning
-* auditabilidad
-* reproducibilidad
-* separación Geometry vs Semantic
-
----
-
-# NUEVA RAMA ARQUITECTÓNICA
-
-# Topological Precision Layer
-
-Objetivo:
-mejorar fidelidad geométrica SIN tocar Spatial Reasoning Engine.
-
----
-
-# COMPONENTES A IMPLEMENTAR
-
----
-
-# 1. `contour_tracer.py`
-
-Responsabilidad:
-reconstruir contornos reales desde:
-
-* linework
-* stitched loops
-* traced polygons
-
-Debe soportar:
-
-* ordered vertices
-* contour continuity
-* edge direction consistency
-
-Output:
-
-```python id="v6d13h"
-PrecisePolygon
-```
-
----
-
-# 2. `hole_detector.py`
-
-Responsabilidad:
-detectar:
-
-* inner loops
-* voids
-* courtyards
-* shafts
-* nested polygons
-
-Debe generar:
-
-```python id="z5tmq7"
-PolygonWithHoles
-```
-
----
-
-# 3. `topology_validator.py`
-
-Responsabilidad:
-validar:
-
-* self intersections
-* overlapping contours
-* invalid nesting
-* broken winding order
-* disconnected islands
-
-Clasificar:
-
-* VALID
-* DEGRADED
-* INVALID
-
----
-
-# 4. `polygon_simplifier.py`
-
-Responsabilidad:
-simplificar geometría ruidosa SIN destruir:
-
-* area fidelity
-* topology
-* adjacency semantics
-
-Debe soportar:
-
-* tolerance simplification
-* redundant vertex cleanup
-* noisy micro-segment removal
-
----
-
-# 5. `boundary_semantics.py`
-
-Responsabilidad:
-inferir:
-
-* shared boundaries
-* wall adjacency
-* interior vs exterior edges
-
-SIN inferencia semántica arquitectónica.
-
-Solo geometría/topología.
-
----
-
-# 6. `precision_metrics.py`
-
-Medir:
-
-* contour fidelity
-* topology integrity
-* hole detection accuracy
-* polygon validity rate
-* adjacency border precision
-* geometry degradation %
-
----
-
-# FAILURE TAXONOMY OBLIGATORIA
-
-Clasificar:
-
-* nested ambiguity
-* invalid hole ownership
-* contour fragmentation
-* overlapping shells
-* floating point instability
-* topology corruption
-* orphan inner loops
-
----
-
-# BENCHMARK OBLIGATORIO
-
-Usar:
-
-```text id="mxw7u9"
-docs/Documentos_EOSIS
-```
-
-como corpus manual/controlado.
-
-Medir:
-
-* contour accuracy
-* topology survival
-* runtime
-* geometry precision
-* invalid polygon rate
-
----
-
-# OBJETIVO FINAL
-
-Responder claramente:
-
-> “¿Puede EOSIS Edge reconstruir geometría arquitectónica topológicamente precisa desde drawings reales sin depender de inferencia semántica?”
-
----
-
-# CRITERIO DE ÉXITO
-
-El sistema debe poder producir:
-
-* polygons precisos
-* holes válidos
-* adjacency borders exactos
-* topology consistente
-* geometría estable
-
-compatibles con:
-
-* SpatialGraph
-* EDGE Mapping
-* futuros pipelines BIM/IFC
-
-SIN romper la arquitectura SDD existente.
